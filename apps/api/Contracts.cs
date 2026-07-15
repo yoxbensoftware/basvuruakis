@@ -41,9 +41,17 @@ public sealed record ApplicationQuery(
     string? Sort,
     bool? Desc,
     string? Status,
+    string? FirstName,
+    string? LastName,
+    string? NationalId,
+    string? Phone,
+    string? Email,
     int? ProvinceId,
     int? DistrictId,
     int? NeighborhoodId,
+    int? RepresentativeOfficeId,
+    bool? IsAssigned,
+    bool? IsPhoneVerified,
     DateTimeOffset? From,
     DateTimeOffset? To);
 

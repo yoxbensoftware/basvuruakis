@@ -301,6 +301,7 @@ admin.MapGet("/applications", async Task<Results<Ok<PagedResult<ApplicationListI
     HttpContext httpContext,
     AppDbContext db,
     IMaskingService masking,
+    ICryptoService crypto,
     [AsParameters] ApplicationQuery query,
     CancellationToken cancellationToken) =>
 {
@@ -311,32 +312,7 @@ admin.MapGet("/applications", async Task<Results<Ok<PagedResult<ApplicationListI
 
     var page = Math.Clamp(query.Page ?? 1, 1, 10000);
     var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
-    var applications = db.Applications.AsNoTracking().AsQueryable();
-
-    if (!string.IsNullOrWhiteSpace(query.Status) && Enum.TryParse<ApplicationStatus>(query.Status, true, out var status))
-    {
-        applications = applications.Where(x => x.Status == status);
-    }
-    if (query.ProvinceId is not null)
-    {
-        applications = applications.Where(x => x.ProvinceId == query.ProvinceId);
-    }
-    if (query.DistrictId is not null)
-    {
-        applications = applications.Where(x => x.DistrictId == query.DistrictId);
-    }
-    if (query.NeighborhoodId is not null)
-    {
-        applications = applications.Where(x => x.NeighborhoodId == query.NeighborhoodId);
-    }
-    if (query.From is not null)
-    {
-        applications = applications.Where(x => x.CreatedAt >= query.From);
-    }
-    if (query.To is not null)
-    {
-        applications = applications.Where(x => x.CreatedAt <= query.To);
-    }
+    var applications = ApplicationQueryFilter.Apply(db.Applications.AsNoTracking(), db, crypto, query);
 
     var desc = query.Desc == true;
     applications = query.Sort?.ToLowerInvariant() switch

@@ -327,6 +327,15 @@ public sealed class AssignmentService(AppDbContext db, ISystemClock clock, IAudi
             return ServiceResult.Fail("office_not_found", "Aktif temsilcilik bulunamadı.");
         }
 
+        var previousRepresentativeOfficeId = await db.ApplicationAssignments
+            .Where(x => x.ApplicationId == applicationId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenBy(x => x.IsAutomatic)
+            .Select(x => (int?)x.RepresentativeOfficeId)
+            .FirstOrDefaultAsync(cancellationToken);
+        var now = clock.UtcNow;
+        var oldStatus = application.Status;
+
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.ApplicationAssignments.Add(new ApplicationAssignment
         {
@@ -336,10 +345,30 @@ public sealed class AssignmentService(AppDbContext db, ISystemClock clock, IAudi
             IsAutomatic = false,
             ActorUserId = actorUserId,
             Reason = reason,
-            CreatedAt = clock.UtcNow
+            CreatedAt = now
         });
+        if (application.Status != ApplicationStatus.Assigned)
+        {
+            application.Status = ApplicationStatus.Assigned;
+            db.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                FromStatus = oldStatus,
+                ToStatus = ApplicationStatus.Assigned,
+                ActorUserId = actorUserId,
+                Reason = reason,
+                CreatedAt = now
+            });
+        }
         await db.SaveChangesAsync(cancellationToken);
-        await audit.WriteAsync(actorUserId, AuditActions.ApplicationAssigned, nameof(ApplicationRecord), applicationId.ToString(), new { representativeOfficeId, reason }, cancellationToken);
+        await audit.WriteAsync(
+            actorUserId,
+            AuditActions.ApplicationAssigned,
+            nameof(ApplicationRecord),
+            applicationId.ToString(),
+            new { previousRepresentativeOfficeId, representativeOfficeId, reason },
+            cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return ServiceResult.Ok();
     }
@@ -538,19 +567,107 @@ public interface IExportService
     Task<ServiceResult<ExportFile>> ExportApplicationsAsync(Guid? actorUserId, ExportRequest request, CancellationToken cancellationToken);
 }
 
+public static class ApplicationQueryFilter
+{
+    public static IQueryable<ApplicationRecord> Apply(
+        IQueryable<ApplicationRecord> applications,
+        AppDbContext db,
+        ICryptoService crypto,
+        ApplicationQuery query)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Status) && Enum.TryParse<ApplicationStatus>(query.Status, true, out var status))
+        {
+            applications = applications.Where(x => x.Status == status);
+        }
+
+        var firstName = NormalizeTextSearch(query.FirstName);
+        if (firstName is not null)
+        {
+            applications = applications.Where(x => x.FirstName.ToLower().Contains(firstName));
+        }
+
+        var lastName = NormalizeTextSearch(query.LastName);
+        if (lastName is not null)
+        {
+            applications = applications.Where(x => x.LastName.ToLower().Contains(lastName));
+        }
+
+        var nationalId = Normalization.NormalizeDigits(query.NationalId ?? "");
+        if (!string.IsNullOrWhiteSpace(nationalId))
+        {
+            var hash = crypto.HashLookup(nationalId);
+            applications = applications.Where(x => x.NationalIdHash == hash);
+        }
+
+        var phone = Normalization.NormalizePhone(query.Phone ?? "");
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            var hash = crypto.HashLookup(phone);
+            applications = applications.Where(x => x.PhoneHash == hash);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Email))
+        {
+            var hash = crypto.HashLookup(Normalization.NormalizeEmail(query.Email));
+            applications = applications.Where(x => x.EmailHash == hash);
+        }
+
+        if (query.ProvinceId is not null)
+        {
+            applications = applications.Where(x => x.ProvinceId == query.ProvinceId);
+        }
+        if (query.DistrictId is not null)
+        {
+            applications = applications.Where(x => x.DistrictId == query.DistrictId);
+        }
+        if (query.NeighborhoodId is not null)
+        {
+            applications = applications.Where(x => x.NeighborhoodId == query.NeighborhoodId);
+        }
+        if (query.IsPhoneVerified is not null)
+        {
+            applications = applications.Where(x => x.IsPhoneVerified == query.IsPhoneVerified);
+        }
+        if (query.IsAssigned is not null)
+        {
+            applications = query.IsAssigned.Value
+                ? applications.Where(x => db.ApplicationAssignments.Any(a => a.ApplicationId == x.Id))
+                : applications.Where(x => !db.ApplicationAssignments.Any(a => a.ApplicationId == x.Id));
+        }
+        if (query.RepresentativeOfficeId is not null)
+        {
+            applications = applications.Where(x =>
+                db.ApplicationAssignments
+                    .Where(a => a.ApplicationId == x.Id)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ThenBy(a => a.IsAutomatic)
+                    .Select(a => (int?)a.RepresentativeOfficeId)
+                    .FirstOrDefault() == query.RepresentativeOfficeId);
+        }
+        if (query.From is not null)
+        {
+            applications = applications.Where(x => x.CreatedAt >= query.From);
+        }
+        if (query.To is not null)
+        {
+            applications = applications.Where(x => x.CreatedAt <= query.To);
+        }
+
+        return applications;
+    }
+
+    private static string? NormalizeTextSearch(string? value)
+    {
+        value = value?.Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value.ToLowerInvariant();
+    }
+}
+
 public sealed class ExportService(AppDbContext db, ICryptoService crypto, IExportSanitizer sanitizer, ISystemClock clock, IAuditService audit) : IExportService
 {
     public async Task<ServiceResult<ExportFile>> ExportApplicationsAsync(Guid? actorUserId, ExportRequest request, CancellationToken cancellationToken)
     {
-        var applications = db.Applications.AsNoTracking().AsQueryable();
-        if (!string.IsNullOrWhiteSpace(request.Filters.Status) && Enum.TryParse<ApplicationStatus>(request.Filters.Status, true, out var status))
-        {
-            applications = applications.Where(x => x.Status == status);
-        }
-        if (request.Filters.ProvinceId is not null)
-        {
-            applications = applications.Where(x => x.ProvinceId == request.Filters.ProvinceId);
-        }
+        var applications = ApplicationQueryFilter.Apply(db.Applications.AsNoTracking(), db, crypto, request.Filters);
 
         var rows = await applications.OrderByDescending(x => x.CreatedAt).Take(10_000).ToListAsync(cancellationToken);
         var now = clock.UtcNow;

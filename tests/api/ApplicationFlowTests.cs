@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using BasvuruAkis.Api;
 using BasvuruAkis.Api.Data;
+using BasvuruAkis.Api.Domain;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -219,7 +220,121 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
     }
 
-    private async Task<HttpResponseMessage> CreateVerifiedApplicationAsync(string phone, string email, string idempotencyKey)
+    [Fact]
+    public async Task AdminApplicationFilters_SearchSensitiveFieldsCurrentOffice_AndExportUsesSameFilters()
+    {
+        var firstResponse = await CreateVerifiedApplicationAsync(
+            "05321112270",
+            "filtre1@example.test",
+            $"idem-{Guid.NewGuid():N}",
+            nationalId: "10000000214",
+            firstName: "Elif",
+            lastName: "Kaya");
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var first = await ReadJson<ApplicationCreatedResponse>(firstResponse);
+
+        var secondResponse = await CreateVerifiedApplicationAsync(
+            "05321112271",
+            "filtre2@example.test",
+            $"idem-{Guid.NewGuid():N}",
+            nationalId: "10000000382",
+            firstName: "Mert",
+            lastName: "Demir");
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+        var second = await ReadJson<ApplicationCreatedResponse>(secondResponse);
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var reassignment = await _client.PostAsJsonAsync($"/api/admin/applications/{second.Id}/assignment", new ManualAssignmentRequest(1, "Test temsilcilik filtresi"));
+        Assert.Equal(HttpStatusCode.NoContent, reassignment.StatusCode);
+
+        var byPhone = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&phone=05321112270"));
+        Assert.Single(byPhone.Items);
+        Assert.Equal(first.Id, byPhone.Items[0].Id);
+
+        var byNationalId = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&nationalId=10000000382"));
+        Assert.Single(byNationalId.Items);
+        Assert.Equal(second.Id, byNationalId.Items[0].Id);
+
+        var byEmail = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&email=filtre1@example.test"));
+        Assert.Single(byEmail.Items);
+        Assert.Equal(first.Id, byEmail.Items[0].Id);
+
+        var byFirstName = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&firstName=eli"));
+        Assert.Single(byFirstName.Items);
+        Assert.Equal(first.Id, byFirstName.Items[0].Id);
+
+        var byLastName = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&lastName=dem"));
+        Assert.Single(byLastName.Items);
+        Assert.Equal(second.Id, byLastName.Items[0].Id);
+
+        var currentOfficeOne = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&representativeOfficeId=1"));
+        Assert.Contains(currentOfficeOne.Items, x => x.Id == second.Id);
+        Assert.DoesNotContain(currentOfficeOne.Items, x => x.Id == first.Id);
+
+        var currentOfficeTwo = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&representativeOfficeId=2"));
+        Assert.Contains(currentOfficeTwo.Items, x => x.Id == first.Id);
+        Assert.DoesNotContain(currentOfficeTwo.Items, x => x.Id == second.Id);
+
+        var assigned = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&isAssigned=true"));
+        Assert.Contains(assigned.Items, x => x.Id == first.Id);
+        Assert.Contains(assigned.Items, x => x.Id == second.Id);
+
+        var unassigned = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&isAssigned=false"));
+        Assert.Empty(unassigned.Items);
+
+        var phoneVerified = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&isPhoneVerified=true"));
+        Assert.Contains(phoneVerified.Items, x => x.Id == first.Id);
+        Assert.Contains(phoneVerified.Items, x => x.Id == second.Id);
+
+        var phoneNotVerified = await ReadJson<PagedResult<ApplicationListItem>>(await _client.GetAsync("/api/admin/applications?page=1&pageSize=20&isPhoneVerified=false"));
+        Assert.Empty(phoneNotVerified.Items);
+
+        var auditResponse = await _client.GetAsync("/api/admin/audit-logs?page=1&pageSize=10&action=application.assigned");
+        auditResponse.EnsureSuccessStatusCode();
+        var auditLogs = await ReadJson<PagedResult<AuditLogItem>>(auditResponse);
+        Assert.Contains(auditLogs.Items, x =>
+            x.EntityId == second.Id.ToString() &&
+            x.MetadataJson.Contains("\"previousRepresentativeOfficeId\":2", StringComparison.Ordinal) &&
+            x.MetadataJson.Contains("\"representativeOfficeId\":1", StringComparison.Ordinal));
+
+        var exportResponse = await _client.PostAsJsonAsync("/api/admin/exports", new ExportRequest(
+            ExportFormat.Csv,
+            new ApplicationQuery(
+                Page: null,
+                PageSize: null,
+                Sort: null,
+                Desc: null,
+                Status: null,
+                FirstName: null,
+                LastName: null,
+                NationalId: null,
+                Phone: "05321112270",
+                Email: null,
+                ProvinceId: null,
+                DistrictId: null,
+                NeighborhoodId: null,
+                RepresentativeOfficeId: null,
+                IsAssigned: null,
+                IsPhoneVerified: null,
+                From: null,
+                To: null)));
+        exportResponse.EnsureSuccessStatusCode();
+        var csv = await exportResponse.Content.ReadAsStringAsync();
+        Assert.Contains(first.ReferenceNumber, csv, StringComparison.Ordinal);
+        Assert.DoesNotContain(second.ReferenceNumber, csv, StringComparison.Ordinal);
+    }
+
+    private async Task<HttpResponseMessage> CreateVerifiedApplicationAsync(
+        string phone,
+        string email,
+        string idempotencyKey,
+        string nationalId = "10000000146",
+        string firstName = "Ayşe",
+        string lastName = "Yılmaz")
     {
         var otpRequest = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto(phone, "ok", "test-device"));
         otpRequest.EnsureSuccessStatusCode();
@@ -230,9 +345,9 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var verification = await ReadJson<OtpVerifyResponse>(otpVerify);
 
         return await _client.PostAsJsonAsync("/api/applications", new CreateApplicationRequest(
-            "Ayşe",
-            "Yılmaz",
-            "10000000146",
+            firstName,
+            lastName,
+            nationalId,
             phone,
             email,
             34,

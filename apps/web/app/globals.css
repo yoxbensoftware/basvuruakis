@@ -173,6 +173,10 @@ button.secondary {
   gap: 1rem;
 }
 
+.form-grid.compact {
+  margin-top: 1rem;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -239,6 +243,36 @@ td {
   border-bottom: 1px solid var(--border);
 }
 
+.detail-card {
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  padding-top: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.detail-grid div {
+  border-radius: 16px;
+  background: var(--surface-soft);
+  padding: .85rem;
+}
+
+.detail-grid dt {
+  color: var(--muted);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.detail-grid dd {
+  margin: .25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
 .cookie {
   position: fixed;
   left: 1rem;
@@ -270,6 +304,7 @@ td {
 @media (max-width: 760px) {
   .hero,
   .grid,
+  .detail-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

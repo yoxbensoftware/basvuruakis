@@ -28,6 +28,8 @@ Uygulama permission bazlı çalışır:
 3. Manuel atama yapılırsa eski otomatik atama korunur, yeni atama history olarak eklenir.
 4. Export işlemi ayrı permission gerektirir ve export log üretir.
 
+Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme ve CSV export butonlarıyla uçtan uca denenebilir.
+
 ## Güvenlik Beklentileri
 
 - Production admin hesaplarında MFA aktif olmalıdır.

@@ -30,6 +30,7 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
     buildFilter:
       paths:
+        - .dockerignore
         - apps/api/**
         - render.yaml
 
@@ -49,6 +50,7 @@ services:
           envVarKey: RENDER_EXTERNAL_HOSTNAME
     buildFilter:
       paths:
+        - .dockerignore
         - apps/web/**
         - package.json
         - pnpm-lock.yaml

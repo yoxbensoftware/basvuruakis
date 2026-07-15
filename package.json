@@ -1,7 +1,7 @@
 {
   "name": "basvuruakis",
   "private": true,
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
     "web:dev": "pnpm --dir apps/web dev",
     "web:build": "pnpm --dir apps/web build",

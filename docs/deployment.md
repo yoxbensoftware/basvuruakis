@@ -44,6 +44,12 @@ Kurulum:
 2. `yoxbensoftware/basvuruakis` repository'sini ve `main` branch'ini bağla.
 3. Blueprint sync işlemini başlat.
 
+Canlı demo/staging ortamı:
+
+- Web: `https://basvuruakis-web.onrender.com`
+- API: `https://basvuruakis-api.onrender.com`
+- API health: `/health/live`, `/health/ready`
+
 Notlar:
 
 - Blueprint free plan ile tanımlıdır; Render free servisleri boşta uyuyabilir ve ilk istek yavaş gelebilir.

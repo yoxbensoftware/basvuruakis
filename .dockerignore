@@ -1,0 +1,14 @@
+.git
+.github
+**/bin
+**/obj
+**/node_modules
+**/.next
+**/coverage
+**/.env
+**/.env.*
+!.env.example
+infrastructure/.env
+*.user
+*.suo
+*.log

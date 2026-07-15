@@ -19,10 +19,11 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - KVKK veri sahibi talebi için gerekçeli başvuru anonimleştirme.
 - Audit/security log temeli ve permission kontrollü okuma endpointleri.
 - CSV/XLSX export sanitization.
+- Admin başvuru listesi ve export için ortak filtreleme; TCKN/telefon/e-posta HMAC lookup araması, son temsilcilik, atanma ve telefon doğrulama filtreleri.
 - API unit/integration testleri.
 - Web typecheck/lint/build.
 - Operasyon ve güvenlik dokümantasyonu.
-- Render Blueprint ile free plan demo deployment tanımı.
+- Render Blueprint ile free plan demo/staging deployment.
 
 ## Manuel Konfigürasyon Gerektirenler
 
@@ -40,7 +41,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 14/14 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 17/17 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -49,16 +50,21 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `pnpm audit --audit-level moderate`: bilinen vulnerability yok.
 - `pnpm peers check`: peer dependency sorunu yok.
 - `docker compose -f .\infrastructure\docker-compose.yml config`: örnek secret env değerleriyle başarılı.
+- `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
+- `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com -t basvuruakis-web:verify .`: başarılı.
 
 Render ek doğrulaması:
 
 - `render.yaml` resmi Blueprint yapısına göre root seviyede API, web ve Postgres kaynaklarını tanımlar.
 - `https://render.com/schema/render.yaml.json` ile `render.yaml` schema validation başarılı.
 - `infrastructure/k6/smoke.js` web/API ayrı hostlu Render smoke kontrolünü destekler.
-- Render Dashboard üzerinden Blueprint sync/deploy işlemi Chrome kontrol yetkisi sağlandıktan sonra başlatılmalıdır.
+- Render Blueprint deploy tamamlandı.
+- API URL: `https://basvuruakis-api.onrender.com`.
+- Web URL: `https://basvuruakis-web.onrender.com`.
+- Canlı smoke: API `/health/live` ve `/health/ready` 200; web `/`, `/basvuru`, `/admin` 200; `/basvuru` ekranında aktif KVKK metinleri yükleniyor.
 
 ## Production Yayın Kararı
 
-Sunum/demo: hazır.
+Sunum/demo/staging: Render üzerinde canlı ve doğrulanmış durumda.
 
 Production: dış servis secret’ları, WAF/TLS, MFA zorunluluğu, backup restore testi, staging load test ve hukuk onayları tamamlanmadan yayın kararı verilmemelidir.

@@ -12,6 +12,12 @@ KVKK uyumlu başvuru toplama, OTP doğrulama, otomatik temsilcilik atama ve yön
 
 ## Development Komutları
 
+## Canlı Demo/Staging
+
+- Web: `https://basvuruakis-web.onrender.com`
+- API: `https://basvuruakis-api.onrender.com`
+- API health: `https://basvuruakis-api.onrender.com/health/ready`
+
 API:
 
 ```powershell

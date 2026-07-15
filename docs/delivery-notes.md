@@ -45,6 +45,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 15 Temmuz 2026 doğrulama sonuçları:
 
 - `dotnet test .\BasvuruAkis.slnx`: başarılı, 32/32 test geçti.
+- `pwsh .\infrastructure\security\secret-scan.ps1`: başarılı, tracked dosyalarda secret pattern bulmadı.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

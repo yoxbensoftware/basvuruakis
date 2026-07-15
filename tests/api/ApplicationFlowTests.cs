@@ -112,6 +112,11 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var detail = await ReadJson<ApplicationDetailResponse>(detailResponse);
         Assert.Equal("10000000146", detail.NationalId);
         Assert.Equal("+905321112233".Replace("+", "", StringComparison.Ordinal), detail.Phone);
+
+        var auditResponse = await _client.GetAsync("/api/admin/audit-logs?page=1&pageSize=10&action=application.viewed");
+        auditResponse.EnsureSuccessStatusCode();
+        var auditLogs = await ReadJson<PagedResult<AuditLogItem>>(auditResponse);
+        Assert.Contains(auditLogs.Items, x => x.EntityId == created.Id.ToString());
     }
 
     [Fact]
@@ -134,6 +139,16 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var securityLogs = await db.SecurityLogs.AsNoTracking().ToListAsync();
         Assert.Contains(securityLogs, x => x.EventType == "otp.rate_limit.device" && x.IpAddress == "203.0.113.10");
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var securityLogResponse = await _client.GetAsync("/api/admin/security-logs?page=1&pageSize=10&eventType=otp.rate_limit.device");
+        securityLogResponse.EnsureSuccessStatusCode();
+        var securityLogPage = await ReadJson<PagedResult<SecurityLogItem>>(securityLogResponse);
+        Assert.Contains(securityLogPage.Items, x => x.IpAddress == "203.0.113.10");
     }
 
     [Fact]

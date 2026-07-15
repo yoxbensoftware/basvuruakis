@@ -490,6 +490,66 @@ admin.MapGet("/dashboard", async Task<Results<Ok<DashboardResponse>, ForbidHttpR
     return TypedResults.Ok(new DashboardResponse(total, todayCount, last7Count, last30Count, verified, total - verified, unassigned, byProvince));
 }).RequireAuthorization();
 
+admin.MapGet("/audit-logs", async Task<Results<Ok<PagedResult<AuditLogItem>>, ForbidHttpResult>> (
+    HttpContext httpContext,
+    AppDbContext db,
+    [AsParameters] AuditLogQuery query,
+    CancellationToken cancellationToken) =>
+{
+    if (!httpContext.User.HasPermission(Permissions.AuditRead))
+    {
+        return TypedResults.Forbid();
+    }
+
+    var page = Math.Clamp(query.Page ?? 1, 1, 10000);
+    var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
+    var logs = db.AuditLogs.AsNoTracking().AsQueryable();
+    if (!string.IsNullOrWhiteSpace(query.Action))
+    {
+        logs = logs.Where(x => x.Action == query.Action);
+    }
+
+    var total = await logs.CountAsync(cancellationToken);
+    var items = await logs
+        .OrderByDescending(x => x.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(x => new AuditLogItem(x.Id, x.ActorUserId, x.Action, x.EntityType, x.EntityId, x.MetadataJson, x.CreatedAt))
+        .ToListAsync(cancellationToken);
+
+    return TypedResults.Ok(new PagedResult<AuditLogItem>(items, page, pageSize, total));
+}).RequireAuthorization();
+
+admin.MapGet("/security-logs", async Task<Results<Ok<PagedResult<SecurityLogItem>>, ForbidHttpResult>> (
+    HttpContext httpContext,
+    AppDbContext db,
+    [AsParameters] SecurityLogQuery query,
+    CancellationToken cancellationToken) =>
+{
+    if (!httpContext.User.HasPermission(Permissions.AuditRead))
+    {
+        return TypedResults.Forbid();
+    }
+
+    var page = Math.Clamp(query.Page ?? 1, 1, 10000);
+    var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
+    var logs = db.SecurityLogs.AsNoTracking().AsQueryable();
+    if (!string.IsNullOrWhiteSpace(query.EventType))
+    {
+        logs = logs.Where(x => x.EventType == query.EventType);
+    }
+
+    var total = await logs.CountAsync(cancellationToken);
+    var items = await logs
+        .OrderByDescending(x => x.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(x => new SecurityLogItem(x.Id, x.EventType, x.ActorUserId, x.IpAddress, x.UserAgent, x.MetadataJson, x.CreatedAt))
+        .ToListAsync(cancellationToken);
+
+    return TypedResults.Ok(new PagedResult<SecurityLogItem>(items, page, pageSize, total));
+}).RequireAuthorization();
+
 admin.MapPost("/exports", async Task<Results<FileContentHttpResult, ForbidHttpResult, BadRequest<ApiError>>> (
     ExportRequest request,
     HttpContext httpContext,

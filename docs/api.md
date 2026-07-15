@@ -24,6 +24,8 @@ Tüm admin endpointleri JWT Bearer token kullanır.
 - `POST /api/admin/applications/{id}/assignment`: manuel temsilcilik ataması.
 - `POST /api/admin/applications/{id}/anonymize`: KVKK veri sahibi talebi kapsamında kişisel alanları anonimleştirir.
 - `GET /api/admin/dashboard`: temel metrikler.
+- `GET /api/admin/audit-logs`: denetim kayıtlarını permission kontrollü listeler.
+- `GET /api/admin/security-logs`: güvenlik olay kayıtlarını permission kontrollü listeler.
 - `POST /api/admin/exports`: CSV/XLSX export; export log ve injection sanitization uygular.
 
 ## Demo Seed

@@ -27,6 +27,20 @@ type PagedApplications = {
   pageSize: number;
 };
 
+type PagedAuditLogs = {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type PagedSecurityLogs = {
+  items: SecurityLogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 type ApplicationListItem = {
   id: string;
   referenceNumber: string;
@@ -63,12 +77,34 @@ type ApplicationAnonymizedResponse = {
   anonymizedAt: string;
 };
 
+type AuditLogItem = {
+  id: string;
+  actorUserId?: string | null;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  metadataJson: string;
+  createdAt: string;
+};
+
+type SecurityLogItem = {
+  id: string;
+  eventType: string;
+  actorUserId?: string | null;
+  ipAddress: string;
+  userAgent: string;
+  metadataJson: string;
+  createdAt: string;
+};
+
 export function AdminPanel() {
   const [email, setEmail] = useState("admin@basvuruakis.local");
   const [password, setPassword] = useState("ChangeMe!12345");
   const [token, setToken] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [applications, setApplications] = useState<PagedApplications | null>(null);
+  const [auditLogs, setAuditLogs] = useState<PagedAuditLogs | null>(null);
+  const [securityLogs, setSecurityLogs] = useState<PagedSecurityLogs | null>(null);
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [assignmentOfficeId, setAssignmentOfficeId] = useState(2);
   const [assignmentReason, setAssignmentReason] = useState("Demo manuel yönlendirme");
@@ -104,12 +140,16 @@ export function AdminPanel() {
     if (!accessToken) {
       return;
     }
-    const [dashboardResult, applicationsResult] = await Promise.all([
+    const [dashboardResult, applicationsResult, auditResult, securityResult] = await Promise.all([
       apiFetch<DashboardResponse>("/api/admin/dashboard", { headers: authHeaders(accessToken) }),
-      apiFetch<PagedApplications>("/api/admin/applications?page=1&pageSize=20&sort=createdAt&desc=true", { headers: authHeaders(accessToken) })
+      apiFetch<PagedApplications>("/api/admin/applications?page=1&pageSize=20&sort=createdAt&desc=true", { headers: authHeaders(accessToken) }),
+      apiFetch<PagedAuditLogs>("/api/admin/audit-logs?page=1&pageSize=10", { headers: authHeaders(accessToken) }),
+      apiFetch<PagedSecurityLogs>("/api/admin/security-logs?page=1&pageSize=10", { headers: authHeaders(accessToken) })
     ]);
     setDashboard(dashboardResult);
     setApplications(applicationsResult);
+    setAuditLogs(auditResult);
+    setSecurityLogs(securityResult);
   }
 
   async function refreshAdminData() {
@@ -130,6 +170,8 @@ export function AdminPanel() {
     setDetail(null);
     setDashboard(null);
     setApplications(null);
+    setAuditLogs(null);
+    setSecurityLogs(null);
     setStatus(null);
     setError(null);
   }
@@ -340,6 +382,66 @@ export function AdminPanel() {
                   {applications?.items.length === 0 && (
                     <tr>
                       <td colSpan={7}>Henüz başvuru yok.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2>Son Denetim Kayıtları</h2>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Aksiyon</th>
+                    <th>Varlık</th>
+                    <th>Aktör</th>
+                    <th>Tarih</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs?.items.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.action}</td>
+                      <td>{item.entityType}{item.entityId ? ` / ${item.entityId.slice(0, 8)}` : ""}</td>
+                      <td>{item.actorUserId?.slice(0, 8) ?? "-"}</td>
+                      <td>{new Date(item.createdAt).toLocaleString("tr-TR")}</td>
+                    </tr>
+                  ))}
+                  {auditLogs?.items.length === 0 && (
+                    <tr>
+                      <td colSpan={4}>Henüz audit kaydı yok.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2>Son Güvenlik Kayıtları</h2>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Olay</th>
+                    <th>IP</th>
+                    <th>Tarih</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {securityLogs?.items.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.eventType}</td>
+                      <td>{item.ipAddress}</td>
+                      <td>{new Date(item.createdAt).toLocaleString("tr-TR")}</td>
+                    </tr>
+                  ))}
+                  {securityLogs?.items.length === 0 && (
+                    <tr>
+                      <td colSpan={3}>Henüz security kaydı yok.</td>
                     </tr>
                   )}
                 </tbody>

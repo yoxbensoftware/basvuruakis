@@ -30,7 +30,7 @@ Uygulama permission bazlı çalışır:
 4. Export işlemi ayrı permission gerektirir ve export log üretir.
 5. Anonimleştirme işlemi gerekçe ister, başvuru durumunu `Anonymized` yapar ve audit log üretir.
 
-Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme, KVKK anonimleştirme ve CSV export butonlarıyla uçtan uca denenebilir.
+Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme, KVKK anonimleştirme, son audit/security log tabloları ve CSV export butonlarıyla uçtan uca denenebilir.
 
 ## Güvenlik Beklentileri
 

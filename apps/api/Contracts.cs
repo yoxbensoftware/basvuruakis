@@ -95,3 +95,9 @@ public sealed record DistributionItem(string Label, int Count);
 
 public sealed record ExportRequest(ExportFormat Format, ApplicationQuery Filters);
 public sealed record ExportFile(byte[] Content, string ContentType, string FileName);
+
+public sealed record AuditLogQuery(int? Page, int? PageSize, string? Action);
+public sealed record AuditLogItem(Guid Id, Guid? ActorUserId, string Action, string EntityType, string? EntityId, string MetadataJson, DateTimeOffset CreatedAt);
+
+public sealed record SecurityLogQuery(int? Page, int? PageSize, string? EventType);
+public sealed record SecurityLogItem(Guid Id, string EventType, Guid? ActorUserId, string IpAddress, string UserAgent, string MetadataJson, DateTimeOffset CreatedAt);

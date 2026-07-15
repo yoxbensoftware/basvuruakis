@@ -36,12 +36,13 @@ Bu senaryolar, PDF gereksinimleri ile geliştirilecek testlerin izlenebilirlik k
 13. Başvuru liste endpointi filtre, sorting ve pagination uygular.
 14. Liste endpointi hassas alanları maskeli döner.
 15. Detay endpointi ayrı permission olmadan erişilemez.
-16. Detay görüntüleme audit log üretir.
+16. Detay görüntüleme audit log üretir ve audit endpointinde listelenir.
 17. Manuel temsilcilik değişikliği assignment history ve audit log üretir.
 18. Export endpointi permission olmadan erişilemez.
 19. Export log yönetici, filtre, format, kayıt sayısı ve durum bilgisini saklar.
-20. LegalText aynı türde tek aktif sürüm kuralını korur.
-21. Data subject anonimleştirme endpointi yeniden kimlik doğrulama/onay olmadan çalışmaz.
+20. Güvenlik olayları security log endpointinde permission kontrollü listelenir.
+21. LegalText aynı türde tek aktif sürüm kuralını korur.
+22. Data subject anonimleştirme endpointi yeniden kimlik doğrulama/onay olmadan çalışmaz.
 
 ## E2E / Smoke Senaryoları
 

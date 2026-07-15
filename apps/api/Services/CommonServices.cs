@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -18,6 +19,20 @@ public interface ISystemClock
 public sealed class SystemClock : ISystemClock
 {
     public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
+}
+
+public interface IReferenceNumberGenerator
+{
+    string Generate(DateTimeOffset now);
+}
+
+public sealed class ReferenceNumberGenerator : IReferenceNumberGenerator
+{
+    public string Generate(DateTimeOffset now)
+    {
+        var suffix = RandomNumberGenerator.GetInt32(100000, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
+        return $"BA-{now:yyyyMMdd}-{suffix}";
+    }
 }
 
 public static class Normalization

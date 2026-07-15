@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using BasvuruAkis.Api;
 using BasvuruAkis.Api.Data;
@@ -6,10 +5,13 @@ using BasvuruAkis.Api.Domain;
 using BasvuruAkis.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+const int ReferenceNumberMaxAttempts = 10;
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
@@ -44,6 +46,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSingleton<ISystemClock, SystemClock>();
 builder.Services.AddSingleton<IDataProtectionKeyProvider, ConfigurationDataProtectionKeyProvider>();
+builder.Services.AddSingleton<IReferenceNumberGenerator, ReferenceNumberGenerator>();
 builder.Services.AddSingleton<ICryptoService, CryptoService>();
 builder.Services.AddSingleton<IMaskingService, MaskingService>();
 builder.Services.AddSingleton<ITcknValidator, TcknValidator>();
@@ -179,7 +182,7 @@ publicApi.MapPost("/otp/verify", async Task<Results<Ok<OtpVerifyResponse>, BadRe
         : TypedResults.BadRequest(new ApiError(result.ErrorCode, result.Message));
 });
 
-publicApi.MapPost("/applications", async Task<Results<Created<ApplicationCreatedResponse>, Ok<ApplicationCreatedResponse>, BadRequest<ApiError>, Conflict<ApiError>>> (
+publicApi.MapPost("/applications", async Task<Results<Created<ApplicationCreatedResponse>, Ok<ApplicationCreatedResponse>, BadRequest<ApiError>, Conflict<ApiError>, ProblemHttpResult>> (
     CreateApplicationRequest request,
     HttpContext httpContext,
     AppDbContext db,
@@ -187,6 +190,7 @@ publicApi.MapPost("/applications", async Task<Results<Created<ApplicationCreated
     ITcknValidator tcknValidator,
     IOtpService otpService,
     IAssignmentService assignmentService,
+    IReferenceNumberGenerator referenceNumberGenerator,
     ISystemClock clock,
     CancellationToken cancellationToken) =>
 {
@@ -236,47 +240,99 @@ publicApi.MapPost("/applications", async Task<Results<Created<ApplicationCreated
         return TypedResults.BadRequest(new ApiError("assignment_not_configured", "Başvuru yönlendirme yapılandırması eksik."));
     }
 
+    var now = clock.UtcNow;
+    var referenceNumber = await GenerateUnusedReferenceNumberAsync(db, referenceNumberGenerator, now, cancellationToken);
+    if (referenceNumber is null)
+    {
+        return TypedResults.Problem("Başvuru referans numarası üretilemedi.", statusCode: 503);
+    }
+
     var tokenConsumed = await otpService.ConsumeVerificationTokenAsync(normalizedPhone, request.VerificationToken, cancellationToken);
     if (!tokenConsumed)
     {
         return TypedResults.BadRequest(new ApiError("phone_not_verified", "Telefon doğrulaması tamamlanmadan başvuru oluşturulamaz."));
     }
 
-    await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-    var now = clock.UtcNow;
-    var application = new ApplicationRecord
+    var nextReferenceNumber = referenceNumber;
+    for (var attempt = 0; attempt < ReferenceNumberMaxAttempts; attempt++)
     {
-        Id = Guid.NewGuid(),
-        ReferenceNumber = $"BA-{now:yyyyMMdd}-{Random.Shared.Next(100000, 999999).ToString(CultureInfo.InvariantCulture)}",
-        FirstName = request.FirstName.Trim(),
-        LastName = request.LastName.Trim(),
-        NationalIdEncrypted = crypto.Encrypt(normalizedNationalId),
-        NationalIdHash = nationalIdHash,
-        PhoneEncrypted = crypto.Encrypt(normalizedPhone),
-        PhoneHash = phoneHash,
-        EmailEncrypted = crypto.Encrypt(normalizedEmail),
-        EmailHash = emailHash,
-        AddressEncrypted = crypto.Encrypt(request.Address.Trim()),
-        ProvinceId = request.ProvinceId,
-        DistrictId = request.DistrictId,
-        NeighborhoodId = request.NeighborhoodId,
-        PostalCode = string.IsNullOrWhiteSpace(request.PostalCode) ? null : request.PostalCode.Trim(),
-        Status = ApplicationStatus.Submitted,
-        IsPhoneVerified = true,
-        IdempotencyKey = request.IdempotencyKey,
-        CreatedAt = now
-    };
-    db.Applications.Add(application);
-    db.ApplicationConsents.AddRange(
-        ApplicationConsent.For(application.Id, privacy, httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString(), now),
-        ApplicationConsent.For(application.Id, consent, httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString(), now));
+        if (attempt > 0)
+        {
+            nextReferenceNumber = await GenerateUnusedReferenceNumberAsync(db, referenceNumberGenerator, now, cancellationToken);
+            if (nextReferenceNumber is null)
+            {
+                return TypedResults.Problem("Başvuru referans numarası üretilemedi.", statusCode: 503);
+            }
+        }
 
-    await db.SaveChangesAsync(cancellationToken);
-    await assignmentService.AssignAutomaticallyAsync(application.Id, cancellationToken);
-    await transaction.CommitAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var application = new ApplicationRecord
+        {
+            Id = Guid.NewGuid(),
+            ReferenceNumber = nextReferenceNumber,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            NationalIdEncrypted = crypto.Encrypt(normalizedNationalId),
+            NationalIdHash = nationalIdHash,
+            PhoneEncrypted = crypto.Encrypt(normalizedPhone),
+            PhoneHash = phoneHash,
+            EmailEncrypted = crypto.Encrypt(normalizedEmail),
+            EmailHash = emailHash,
+            AddressEncrypted = crypto.Encrypt(request.Address.Trim()),
+            ProvinceId = request.ProvinceId,
+            DistrictId = request.DistrictId,
+            NeighborhoodId = request.NeighborhoodId,
+            PostalCode = string.IsNullOrWhiteSpace(request.PostalCode) ? null : request.PostalCode.Trim(),
+            Status = ApplicationStatus.Submitted,
+            IsPhoneVerified = true,
+            IdempotencyKey = request.IdempotencyKey,
+            CreatedAt = now
+        };
+        db.Applications.Add(application);
+        db.ApplicationConsents.AddRange(
+            ApplicationConsent.For(application.Id, privacy, httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString(), now),
+            ApplicationConsent.For(application.Id, consent, httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString(), now));
 
-    var response = new ApplicationCreatedResponse(application.Id, application.ReferenceNumber, application.Status.ToString());
-    return TypedResults.Created($"/api/applications/{application.Id}", response);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            await assignmentService.AssignAutomaticallyAsync(application.Id, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            var response = new ApplicationCreatedResponse(application.Id, application.ReferenceNumber, application.Status.ToString());
+            return TypedResults.Created($"/api/applications/{application.Id}", response);
+        }
+        catch (DbUpdateException error) when (IsApplicationReferenceNumberConstraint(error))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            db.ChangeTracker.Clear();
+            if (attempt + 1 >= ReferenceNumberMaxAttempts)
+            {
+                return TypedResults.Problem("Başvuru referans numarası üretilemedi.", statusCode: 503);
+            }
+        }
+        catch (DbUpdateException error) when (IsApplicationIdempotencyConstraint(error))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            db.ChangeTracker.Clear();
+            var existing = await db.Applications.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+            if (existing is not null)
+            {
+                return TypedResults.Ok(new ApplicationCreatedResponse(existing.Id, existing.ReferenceNumber, existing.Status.ToString()));
+            }
+
+            return TypedResults.Conflict(new ApiError("duplicate_application", "Başvuru alınamadı. Bilgileri kontrol edip daha sonra tekrar deneyin."));
+        }
+        catch (DbUpdateException error) when (IsApplicationDuplicateConstraint(error))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            db.ChangeTracker.Clear();
+            return TypedResults.Conflict(new ApiError("duplicate_application", "Başvuru alınamadı. Bilgileri kontrol edip daha sonra tekrar deneyin."));
+        }
+    }
+
+    return TypedResults.Problem("Başvuru referans numarası üretilemedi.", statusCode: 503);
 });
 
 var admin = app.MapGroup("/api/admin");
@@ -624,6 +680,64 @@ static async Task<bool> LocationExistsAsync(AppDbContext db, int provinceId, int
             neighborhood.DistrictId == districtId &&
             db.Districts.Any(district => district.Id == districtId && district.ProvinceId == provinceId),
             cancellationToken);
+
+static async Task<string?> GenerateUnusedReferenceNumberAsync(
+    AppDbContext db,
+    IReferenceNumberGenerator referenceNumberGenerator,
+    DateTimeOffset now,
+    CancellationToken cancellationToken)
+{
+    for (var attempt = 0; attempt < ReferenceNumberMaxAttempts; attempt++)
+    {
+        var referenceNumber = referenceNumberGenerator.Generate(now);
+        var exists = await db.Applications.AsNoTracking()
+            .AnyAsync(application => application.ReferenceNumber == referenceNumber, cancellationToken);
+        if (!exists)
+        {
+            return referenceNumber;
+        }
+    }
+
+    return null;
+}
+
+static bool IsApplicationDuplicateConstraint(DbUpdateException error) =>
+    IsUniqueConstraintViolation(
+        error,
+        "IX_Applications_NationalIdHash",
+        "IX_Applications_PhoneHash",
+        "Applications.NationalIdHash",
+        "Applications.PhoneHash");
+
+static bool IsApplicationIdempotencyConstraint(DbUpdateException error) =>
+    IsUniqueConstraintViolation(
+        error,
+        "IX_Applications_IdempotencyKey",
+        "Applications.IdempotencyKey");
+
+static bool IsApplicationReferenceNumberConstraint(DbUpdateException error) =>
+    IsUniqueConstraintViolation(
+        error,
+        "IX_Applications_ReferenceNumber",
+        "Applications.ReferenceNumber");
+
+static bool IsUniqueConstraintViolation(DbUpdateException error, params string[] identifiers)
+{
+    if (error.InnerException is PostgresException { SqlState: "23505" } postgres)
+    {
+        return identifiers.Any(identifier =>
+            string.Equals(postgres.ConstraintName, identifier, StringComparison.OrdinalIgnoreCase) ||
+            postgres.MessageText.Contains(identifier, StringComparison.OrdinalIgnoreCase));
+    }
+
+    if (error.InnerException is SqliteException { SqliteErrorCode: 19 } sqlite)
+    {
+        return identifiers.Any(identifier => sqlite.Message.Contains(identifier, StringComparison.OrdinalIgnoreCase));
+    }
+
+    var message = error.InnerException?.Message ?? error.Message;
+    return identifiers.Any(identifier => message.Contains(identifier, StringComparison.OrdinalIgnoreCase));
+}
 
 static async Task<bool> OperationalDataReadyAsync(AppDbContext db, CancellationToken cancellationToken)
 {

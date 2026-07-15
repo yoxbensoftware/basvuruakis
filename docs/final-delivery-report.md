@@ -18,6 +18,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Production HTTP JSON SMS adapter ve provider stub engeli.
 - Başvuru oluşturma, idempotency, TCKN kontrolü, alan şifreleme, HMAC lookup hash.
 - Başvuru oluşturmada OTP token tüketilmeden önce aktif legal text, geçerli lokasyon hiyerarşisi ve aktif default temsilcilik kontrolü.
+- Başvuru referans numarası çakışmaları ve unique constraint yarışları için güvenli yeniden deneme/kontrollü hata yanıtı.
 - KVKK onay kayıtları.
 - Otomatik temsilcilik atama.
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
@@ -48,7 +49,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 25/25 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 26/26 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

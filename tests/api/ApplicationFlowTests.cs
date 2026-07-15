@@ -5,6 +5,7 @@ using System.Text.Json;
 using BasvuruAkis.Api;
 using BasvuruAkis.Api.Data;
 using BasvuruAkis.Api.Domain;
+using BasvuruAkis.Api.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +40,10 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
                         ["Otp:MaxRequestsPerIpPerHour"] = "100",
                         ["Otp:MaxRequestsPerDevicePerHour"] = "2"
                     });
+                });
+                builder.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IReferenceNumberGenerator, DeterministicReferenceNumberGenerator>();
                 });
             });
         _client = _factory.CreateClient();
@@ -205,6 +210,44 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         };
         var accepted = await _client.PostAsJsonAsync("/api/applications", validLocation);
         Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApplicationEndpoint_RetriesReferenceNumberCollision()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var crypto = scope.ServiceProvider.GetRequiredService<ICryptoService>();
+            db.Applications.Add(new ApplicationRecord
+            {
+                Id = Guid.NewGuid(),
+                ReferenceNumber = "BA-TEST-000001",
+                FirstName = "Referans",
+                LastName = "Çakışma",
+                NationalIdEncrypted = crypto.Encrypt("99999999999"),
+                NationalIdHash = crypto.HashLookup("99999999999"),
+                PhoneEncrypted = crypto.Encrypt("905329990001"),
+                PhoneHash = crypto.HashLookup("905329990001"),
+                EmailEncrypted = crypto.Encrypt("reference-collision@example.test"),
+                EmailHash = crypto.HashLookup("reference-collision@example.test"),
+                AddressEncrypted = crypto.Encrypt("Test adresi"),
+                ProvinceId = 34,
+                DistrictId = 3401,
+                NeighborhoodId = 340101,
+                IsPhoneVerified = true,
+                Status = ApplicationStatus.Submitted,
+                IdempotencyKey = $"idem-{Guid.NewGuid():N}",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await CreateVerifiedApplicationAsync("05321112251", "reference-retry@example.test", $"idem-{Guid.NewGuid():N}");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await ReadJson<ApplicationCreatedResponse>(response);
+        Assert.Equal("BA-TEST-000002", created.ReferenceNumber);
     }
 
     [Fact]
@@ -408,5 +451,16 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var value = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
         Assert.NotNull(value);
         return value;
+    }
+
+    private sealed class DeterministicReferenceNumberGenerator : IReferenceNumberGenerator
+    {
+        private int _next;
+
+        public string Generate(DateTimeOffset now)
+        {
+            var suffix = Interlocked.Increment(ref _next).ToString("D6");
+            return $"BA-TEST-{suffix}";
+        }
     }
 }

@@ -19,6 +19,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Public başvuru akışı aktif KVKK/açık rıza, lokasyon hiyerarşisi ve aktif default temsilcilik kontrollerini OTP verification token tüketmeden önce yapar.
 - Başvuru referans numarası üretimi servis arkasına alındı; çakışma durumunda güvenli yeniden deneme ve unique constraint yarışları için kontrollü API yanıtı eklendi.
 - Admin MFA başarısız denemeleri parola hatalarıyla aynı kilit politikasına bağlandı ve security log'a yazıldı.
+- Legal text kayıtlarında aynı tür için yalnızca tek aktif sürüme izin veren filtered unique index eklendi.
 - Production readiness kontrolü başvuru alabilmek için zorunlu operasyon verileri eksikse 503 dönecek şekilde sıkılaştırıldı.
 - Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
 - Web response security header'ları ve API production HSTS eklendi.
@@ -42,7 +43,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 29/29 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 30/30 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -53,7 +54,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
-- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde başarılı; `InitialCreate` ve `AddRelationalConstraints` uygulandı.
+- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde başarılı; `InitialCreate`, `AddRelationalConstraints` ve `EnforceSingleActiveLegalText` uygulandı.
 - `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 - `render.yaml` resmi Render schema ile doğrulandı.

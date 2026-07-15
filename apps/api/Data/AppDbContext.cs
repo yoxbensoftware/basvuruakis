@@ -100,6 +100,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.HasIndex(x => new { x.Type, x.Version }).IsUnique();
             entity.HasIndex(x => new { x.Type, x.IsActive });
+            entity.HasIndex(x => x.Type)
+                .IsUnique()
+                .HasDatabaseName("IX_LegalTexts_Type_Active")
+                .HasFilter("\"IsActive\" = TRUE");
             entity.Property(x => x.Type).HasConversion<string>().HasMaxLength(32);
         });
 

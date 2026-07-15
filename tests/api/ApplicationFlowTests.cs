@@ -186,6 +186,25 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task LegalText_AllowsOnlyOneActiveVersionPerType()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.LegalTexts.Add(new LegalText
+        {
+            Id = Guid.NewGuid(),
+            Type = LegalTextType.PrivacyNotice,
+            Version = "duplicate-active",
+            Title = "Çakışan KVKK metni",
+            Body = "Aynı türde ikinci aktif metin kabul edilmemeli.",
+            IsActive = true,
+            PublishedAt = DateTimeOffset.UtcNow
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
     public async Task OtpRequest_RateLimitsByDevice_AndWritesSecurityLog()
     {
         _client.DefaultRequestHeaders.Remove("CF-Connecting-IP");

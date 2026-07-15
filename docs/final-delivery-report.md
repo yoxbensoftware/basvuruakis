@@ -20,6 +20,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Başvuru oluşturmada OTP token tüketilmeden önce aktif legal text, geçerli lokasyon hiyerarşisi ve aktif default temsilcilik kontrolü.
 - Başvuru referans numarası çakışmaları ve unique constraint yarışları için güvenli yeniden deneme/kontrollü hata yanıtı.
 - KVKK onay kayıtları.
+- Legal text kayıtlarında aynı tür için tek aktif sürüm DB constraint’i.
 - Otomatik temsilcilik atama.
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
 - Production ilk admin bootstrap'i ve MFA zorunluluğu.
@@ -50,7 +51,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 29/29 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 30/30 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -62,7 +63,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
-- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde `InitialCreate` ve `AddRelationalConstraints` migration apply başarılı.
+- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde `InitialCreate`, `AddRelationalConstraints` ve `EnforceSingleActiveLegalText` migration apply başarılı.
 - `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 

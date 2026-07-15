@@ -149,6 +149,61 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         Assert.Equal("duplicate_application", error.Code);
     }
 
+    [Fact]
+    public async Task AnonymizeEndpoint_RemovesPersonalData_AndAllowsFreshApplication()
+    {
+        var firstResponse = await CreateVerifiedApplicationAsync("05321112260", "anon1@example.test", $"idem-{Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var created = await ReadJson<ApplicationCreatedResponse>(firstResponse);
+
+        string oldPhoneHash;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            oldPhoneHash = await db.Applications
+                .Where(x => x.Id == created.Id)
+                .Select(x => x.PhoneHash)
+                .SingleAsync();
+        }
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var anonymizeResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{created.Id}/anonymize", new AnonymizeApplicationRequest("KVKK veri sahibi silme talebi"));
+        anonymizeResponse.EnsureSuccessStatusCode();
+        var anonymized = await ReadJson<ApplicationAnonymizedResponse>(anonymizeResponse);
+        Assert.Equal("Anonymized", anonymized.Status);
+
+        var detailResponse = await _client.GetAsync($"/api/admin/applications/{created.Id}");
+        detailResponse.EnsureSuccessStatusCode();
+        var detail = await ReadJson<ApplicationDetailResponse>(detailResponse);
+        Assert.Equal("Anonim", detail.FirstName);
+        Assert.Equal("Kayıt", detail.LastName);
+        Assert.Equal("", detail.NationalId);
+        Assert.Equal("", detail.Phone);
+        Assert.Equal("", detail.Email);
+        Assert.Equal("", detail.Address);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var application = await db.Applications.AsNoTracking().SingleAsync(x => x.Id == created.Id);
+            Assert.StartsWith("anon-national-", application.NationalIdHash, StringComparison.Ordinal);
+            Assert.DoesNotContain(await db.OtpRequests.AsNoTracking().ToListAsync(), x => x.PhoneHash == oldPhoneHash);
+            Assert.All(await db.ApplicationConsents.AsNoTracking().Where(x => x.ApplicationId == created.Id).ToListAsync(), consent =>
+            {
+                Assert.Equal("anonymized", consent.IpAddress);
+                Assert.Equal("anonymized", consent.UserAgent);
+            });
+        }
+
+        _client.DefaultRequestHeaders.Authorization = null;
+        var secondResponse = await CreateVerifiedApplicationAsync("05321112260", "anon2@example.test", $"idem-{Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+    }
+
     private async Task<HttpResponseMessage> CreateVerifiedApplicationAsync(string phone, string email, string idempotencyKey)
     {
         var otpRequest = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto(phone, "ok", "test-device"));

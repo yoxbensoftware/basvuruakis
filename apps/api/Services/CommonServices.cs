@@ -352,6 +352,7 @@ public static class Permissions
     public const string ApplicationsRead = "applications.read";
     public const string ApplicationsDetailRead = "applications.detail.read";
     public const string ApplicationsAssign = "applications.assign";
+    public const string ApplicationsAnonymize = "applications.anonymize";
     public const string ApplicationsExport = "applications.export";
     public const string DashboardRead = "dashboard.read";
     public const string AuditRead = "audit.read";
@@ -364,6 +365,7 @@ public static class Permissions
         ApplicationsRead,
         ApplicationsDetailRead,
         ApplicationsAssign,
+        ApplicationsAnonymize,
         ApplicationsExport,
         DashboardRead,
         AuditRead,

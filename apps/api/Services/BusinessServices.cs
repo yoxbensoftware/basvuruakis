@@ -345,6 +345,86 @@ public sealed class AssignmentService(AppDbContext db, ISystemClock clock, IAudi
     }
 }
 
+public interface IAnonymizationService
+{
+    Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, CancellationToken cancellationToken);
+}
+
+public sealed class AnonymizationService(AppDbContext db, ICryptoService crypto, ISystemClock clock, IAuditService audit) : IAnonymizationService
+{
+    public async Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
+        {
+            return ServiceResult<ApplicationAnonymizedResponse>.Fail("reason_required", "Anonimleştirme gerekçesi zorunludur.");
+        }
+
+        var application = await db.Applications.FirstOrDefaultAsync(x => x.Id == applicationId, cancellationToken);
+        if (application is null)
+        {
+            return ServiceResult<ApplicationAnonymizedResponse>.Fail("not_found", "Başvuru bulunamadı.");
+        }
+
+        if (application.Status == ApplicationStatus.Anonymized)
+        {
+            return ServiceResult<ApplicationAnonymizedResponse>.Fail("already_anonymized", "Başvuru zaten anonimleştirilmiş.");
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        var now = clock.UtcNow;
+        var oldStatus = application.Status;
+        var oldPhoneHash = application.PhoneHash;
+
+        application.FirstName = "Anonim";
+        application.LastName = "Kayıt";
+        application.NationalIdEncrypted = crypto.Encrypt("");
+        application.NationalIdHash = $"anon-national-{application.Id:N}";
+        application.PhoneEncrypted = crypto.Encrypt("");
+        application.PhoneHash = $"anon-phone-{application.Id:N}";
+        application.EmailEncrypted = crypto.Encrypt("");
+        application.EmailHash = $"anon-email-{application.Id:N}";
+        application.AddressEncrypted = crypto.Encrypt("");
+        application.PostalCode = null;
+        application.Status = ApplicationStatus.Anonymized;
+        application.AnonymizedAt = now;
+
+        var consents = await db.ApplicationConsents.Where(x => x.ApplicationId == applicationId).ToListAsync(cancellationToken);
+        foreach (var consent in consents)
+        {
+            consent.IpAddress = "anonymized";
+            consent.UserAgent = "anonymized";
+        }
+
+        var otpRequests = await db.OtpRequests.Where(x => x.PhoneHash == oldPhoneHash).ToListAsync(cancellationToken);
+        foreach (var otp in otpRequests)
+        {
+            otp.PhoneHash = $"anon-otp-{otp.Id:N}";
+            otp.CodeHash = "anonymized";
+            otp.VerificationTokenHash = null;
+            otp.IpAddress = "anonymized";
+            otp.DeviceId = "anonymized";
+        }
+
+        db.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = applicationId,
+            FromStatus = oldStatus,
+            ToStatus = ApplicationStatus.Anonymized,
+            ActorUserId = actorUserId,
+            Reason = reason.Trim(),
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        await audit.WriteAsync(actorUserId, "application.anonymized", nameof(ApplicationRecord), applicationId.ToString(), new { reason = reason.Trim() }, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return ServiceResult<ApplicationAnonymizedResponse>.Ok(new ApplicationAnonymizedResponse(application.Id, application.Status.ToString(), now));
+    }
+}
+
 public interface IAuthService
 {
     Task<ServiceResult<LoginResponse>> LoginAsync(AdminLoginRequest request, string ipAddress, string userAgent, CancellationToken cancellationToken);

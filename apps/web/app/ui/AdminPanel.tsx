@@ -57,6 +57,12 @@ type ApplicationDetail = {
   createdAt: string;
 };
 
+type ApplicationAnonymizedResponse = {
+  id: string;
+  status: string;
+  anonymizedAt: string;
+};
+
 export function AdminPanel() {
   const [email, setEmail] = useState("admin@basvuruakis.local");
   const [password, setPassword] = useState("ChangeMe!12345");
@@ -66,6 +72,7 @@ export function AdminPanel() {
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [assignmentOfficeId, setAssignmentOfficeId] = useState(2);
   const [assignmentReason, setAssignmentReason] = useState("Demo manuel yönlendirme");
+  const [anonymizeReason, setAnonymizeReason] = useState("KVKK veri sahibi talebi");
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,6 +181,31 @@ export function AdminPanel() {
       await loadDetail(detail.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Manuel yönlendirme başarısız.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function anonymizeSelectedApplication(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !detail) {
+      return;
+    }
+
+    setError(null);
+    setStatus(null);
+    setLoading(true);
+    try {
+      const result = await apiFetch<ApplicationAnonymizedResponse>(`/api/admin/applications/${detail.id}/anonymize`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ reason: anonymizeReason })
+      });
+      setStatus(`Başvuru anonimleştirildi. Durum: ${result.status}`);
+      await loadAdminData(token);
+      await loadDetail(detail.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Anonimleştirme başarısız.");
     } finally {
       setLoading(false);
     }
@@ -354,6 +386,23 @@ export function AdminPanel() {
                 <div className="field full">
                   <button type="submit" disabled={loading || assignmentReason.trim().length < 3}>
                     Manuel yönlendir
+                  </button>
+                </div>
+              </form>
+
+              <form className="form-grid compact" onSubmit={anonymizeSelectedApplication}>
+                <div className="field full">
+                  <label htmlFor="anonymize-reason">Anonimleştirme gerekçesi</label>
+                  <input
+                    id="anonymize-reason"
+                    value={anonymizeReason}
+                    onChange={(event) => setAnonymizeReason(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="field full">
+                  <button type="submit" className="secondary" disabled={loading || detail.status === "Anonymized" || anonymizeReason.trim().length < 5}>
+                    KVKK anonimleştir
                   </button>
                 </div>
               </form>

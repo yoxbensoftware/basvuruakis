@@ -16,6 +16,7 @@ Uygulama permission bazlı çalışır:
 - `applications.read`: maskeli başvuru listesi.
 - `applications.detail.read`: hassas detay görüntüleme ve audit.
 - `applications.assign`: manuel temsilcilik atama.
+- `applications.anonymize`: KVKK veri sahibi talebi kapsamında kişisel verileri anonimleştirme.
 - `applications.export`: CSV/XLSX dışa aktarma.
 - `dashboard.read`: dashboard metrikleri.
 - `audit.read`: denetim kayıtları.
@@ -27,8 +28,9 @@ Uygulama permission bazlı çalışır:
 2. Detay ekranı ayrı permission gerektirir ve her görüntüleme audit log üretir.
 3. Manuel atama yapılırsa eski otomatik atama korunur, yeni atama history olarak eklenir.
 4. Export işlemi ayrı permission gerektirir ve export log üretir.
+5. Anonimleştirme işlemi gerekçe ister, başvuru durumunu `Anonymized` yapar ve audit log üretir.
 
-Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme ve CSV export butonlarıyla uçtan uca denenebilir.
+Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme, KVKK anonimleştirme ve CSV export butonlarıyla uçtan uca denenebilir.
 
 ## Güvenlik Beklentileri
 

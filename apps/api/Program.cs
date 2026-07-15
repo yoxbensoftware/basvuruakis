@@ -56,6 +56,7 @@ builder.Services.AddScoped<ICaptchaVerifier, CaptchaVerifier>();
 builder.Services.AddScoped<ISmsProvider, SmsProvider>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+builder.Services.AddScoped<IAnonymizationService, AnonymizationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 
@@ -427,6 +428,35 @@ admin.MapPost("/applications/{id:guid}/assignment", async Task<Results<NoContent
     return result.Success
         ? TypedResults.NoContent()
         : result.ErrorCode == "not_found" ? TypedResults.NotFound() : TypedResults.BadRequest(new ApiError(result.ErrorCode, result.Message));
+}).RequireAuthorization();
+
+admin.MapPost("/applications/{id:guid}/anonymize", async Task<Results<Ok<ApplicationAnonymizedResponse>, NotFound, ForbidHttpResult, BadRequest<ApiError>>> (
+    Guid id,
+    AnonymizeApplicationRequest request,
+    HttpContext httpContext,
+    IAnonymizationService anonymizationService,
+    CancellationToken cancellationToken) =>
+{
+    if (!httpContext.User.HasPermission(Permissions.ApplicationsAnonymize))
+    {
+        return TypedResults.Forbid();
+    }
+
+    var userId = httpContext.User.GetUserId();
+    if (userId is null)
+    {
+        return TypedResults.Forbid();
+    }
+
+    var result = await anonymizationService.AnonymizeApplicationAsync(id, userId.Value, request.Reason, cancellationToken);
+    if (result.Success)
+    {
+        return TypedResults.Ok(result.Value!);
+    }
+
+    return result.ErrorCode == "not_found"
+        ? TypedResults.NotFound()
+        : TypedResults.BadRequest(new ApiError(result.ErrorCode, result.Message));
 }).RequireAuthorization();
 
 admin.MapGet("/dashboard", async Task<Results<Ok<DashboardResponse>, ForbidHttpResult>> (

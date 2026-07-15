@@ -18,6 +18,16 @@ Encryption key ve lookup key ayrı environment secret değerlerinden türetilir.
 
 Başvuru sırasında aktif KVKK aydınlatma ve açık rıza metinlerinin tür/sürüm bilgisi, kabul zamanı, IP ve User-Agent ile `ApplicationConsents` içinde saklanır.
 
+## Anonimleştirme
+
+Yetkili admin, veri sahibi talebi kapsamında başvuruyu gerekçeli olarak anonimleştirebilir. İşlem:
+
+- Ad/soyadı anonim demo değerlerine çeker.
+- TCKN, telefon, e-posta ve açık adres şifreli alanlarını boş değerle değiştirir.
+- TCKN/telefon/e-posta lookup hashlerini eski değerle ilişkisiz anonim placeholder değerlerine çevirir.
+- Başvuruya bağlı consent IP/User-Agent alanlarını ve telefonla ilişkili OTP kayıtlarını anonimleştirir.
+- Durum geçmişi ve audit log üretir.
+
 ## Hukuki Sınır
 
 Bu repository teknik uygulama sağlar. Hukuki metin içerikleri, saklama süresi, işleme şartı ve veri sahibi süreçleri veri sorumlusu ve hukuk danışmanı tarafından onaylanmalıdır.

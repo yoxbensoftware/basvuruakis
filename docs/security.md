@@ -1,0 +1,25 @@
+# Security Notes
+
+## Uygulanan Kontroller
+
+- JWT access token ve refresh token rotation.
+- BCrypt parola hashleme.
+- Permission bazlı admin endpoint koruması.
+- Başarısız login, CAPTCHA hatası, detay görüntüleme, export ve atama için log altyapısı.
+- AES-256-GCM alan şifreleme.
+- Ayrı HMAC-SHA-256 lookup hash.
+- OTP hash saklama, 3 dakika süre, 5 deneme ve 60 saniye resend cooldown.
+- CAPTCHA production’da Turnstile secret gerektirir.
+- Development fake provider production ortamında bypass sağlamaz.
+- CSV/XLSX formula injection sanitization.
+- Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, temel CSP.
+- NuGet ve pnpm dependency sürümleri pinlidir.
+
+## Production Sertleştirme Adımları
+
+- TLS termination ve HSTS edge veya Nginx üzerinde etkinleştirilmeli.
+- Cloudflare WAF, Turnstile, rate limit ve origin erişim kısıtları kurulmalı.
+- Admin MFA zorunlu hale getirilmeli.
+- Secret store kullanılmalı; `.env` dosyası production sunucuda kalıcı operasyon standardı olmamalı.
+- Container image digest pinleme ve imaj zafiyet taraması CI/CD’ye bağlanmalı.
+- DAST ve manuel OWASP ASVS kontrolü production yayını öncesi çalıştırılmalı.

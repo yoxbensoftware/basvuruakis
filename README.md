@@ -15,8 +15,8 @@ KVKK uyumlu başvuru toplama, OTP doğrulama, otomatik temsilcilik atama ve yön
 API:
 
 ```powershell
-dotnet build .\BasvuruAkis.sln
-dotnet test .\BasvuruAkis.sln
+dotnet build .\BasvuruAkis.slnx
+dotnet test .\BasvuruAkis.slnx
 dotnet run --project .\apps\api\BasvuruAkis.Api.csproj
 ```
 

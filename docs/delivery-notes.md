@@ -29,7 +29,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 12/12 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 14/14 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

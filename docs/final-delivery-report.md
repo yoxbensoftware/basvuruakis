@@ -11,12 +11,13 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Next.js TypeScript web.
 - PostgreSQL/Redis/MinIO/Nginx Compose dosyaları.
 - Health/readiness/liveness endpointleri.
-- OTP/CAPTCHA adapter altyapısı.
+- OTP/CAPTCHA adapter altyapısı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
 - Başvuru oluşturma, idempotency, TCKN kontrolü, alan şifreleme, HMAC lookup hash.
 - KVKK onay kayıtları.
 - Otomatik temsilcilik atama.
-- Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export.
-- Audit/security log temeli.
+- Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
+- KVKK veri sahibi talebi için gerekçeli başvuru anonimleştirme.
+- Audit/security log temeli ve permission kontrollü okuma endpointleri.
 - CSV/XLSX export sanitization.
 - API unit/integration testleri.
 - Web typecheck/lint/build.
@@ -39,7 +40,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 12/12 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 14/14 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -53,6 +54,7 @@ Render ek doğrulaması:
 
 - `render.yaml` resmi Blueprint yapısına göre root seviyede API, web ve Postgres kaynaklarını tanımlar.
 - `https://render.com/schema/render.yaml.json` ile `render.yaml` schema validation başarılı.
+- `infrastructure/k6/smoke.js` web/API ayrı hostlu Render smoke kontrolünü destekler.
 - Render Dashboard üzerinden Blueprint sync/deploy işlemi Chrome kontrol yetkisi sağlandıktan sonra başlatılmalıdır.
 
 ## Production Yayın Kararı

@@ -145,6 +145,53 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminPermissions_RestrictDetailExportAndAuditEndpoints()
+    {
+        var applicationResponse = await CreateVerifiedApplicationAsync("05321112253", "limited-permission@example.test", $"idem-{Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.Created, applicationResponse.StatusCode);
+        var application = await ReadJson<ApplicationCreatedResponse>(applicationResponse);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var adminId = Guid.NewGuid();
+            db.AdminUsers.Add(new AdminUser
+            {
+                Id = adminId,
+                Email = "limited@basvuruakis.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Limited!12345"),
+                MfaEnabled = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                Permissions =
+                [
+                    new AdminUserPermission { AdminUserId = adminId, Permission = Permissions.ApplicationsRead }
+                ]
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("limited@basvuruakis.local", "Limited!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var listResponse = await _client.GetAsync("/api/admin/applications?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+
+        var detailResponse = await _client.GetAsync($"/api/admin/applications/{application.Id}");
+        Assert.Equal(HttpStatusCode.Forbidden, detailResponse.StatusCode);
+
+        var exportResponse = await _client.PostAsJsonAsync("/api/admin/exports", new ExportRequest(ExportFormat.Csv, EmptyApplicationQuery()));
+        Assert.Equal(HttpStatusCode.Forbidden, exportResponse.StatusCode);
+
+        var auditResponse = await _client.GetAsync("/api/admin/audit-logs?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.Forbidden, auditResponse.StatusCode);
+
+        var securityResponse = await _client.GetAsync("/api/admin/security-logs?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.Forbidden, securityResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task ApplicationEndpoint_ReturnsSameApplicationForSameIdempotencyKey()
     {
         const string phone = "05321112252";
@@ -567,6 +614,26 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         Assert.NotNull(value);
         return value;
     }
+
+    private static ApplicationQuery EmptyApplicationQuery() => new(
+        Page: null,
+        PageSize: null,
+        Sort: null,
+        Desc: null,
+        Status: null,
+        FirstName: null,
+        LastName: null,
+        NationalId: null,
+        Phone: null,
+        Email: null,
+        ProvinceId: null,
+        DistrictId: null,
+        NeighborhoodId: null,
+        RepresentativeOfficeId: null,
+        IsAssigned: null,
+        IsPhoneVerified: null,
+        From: null,
+        To: null);
 
     private sealed class DeterministicReferenceNumberGenerator : IReferenceNumberGenerator
     {

@@ -51,6 +51,7 @@ Production ortamında aşağıdaki değerler environment/secret store üzerinden
 - Arama/mükerrer HMAC anahtarı.
 - JWT signing key.
 - Admin bootstrap secret.
+- Admin bootstrap MFA secret.
 - CAPTCHA secret.
 - SMS provider credential.
 - S3/object storage credential.

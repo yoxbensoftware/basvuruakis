@@ -4,6 +4,7 @@
 
 - JWT access token ve refresh token rotation.
 - BCrypt parola hashleme.
+- Production ilk admin bootstrap'i environment secret değerleriyle yapılır ve MFA zorunlu tutulur.
 - Permission bazlı admin endpoint koruması.
 - Başarısız login, CAPTCHA hatası, detay görüntüleme, export ve atama için log altyapısı.
 - AES-256-GCM alan şifreleme.
@@ -20,7 +21,7 @@
 
 - TLS termination ve HSTS edge veya Nginx üzerinde etkinleştirilmeli.
 - Cloudflare WAF, Turnstile, rate limit ve origin erişim kısıtları kurulmalı.
-- Admin MFA zorunlu hale getirilmeli.
+- Admin MFA operasyonel olarak zorunlu tutulmalı; yeni production admin hesapları MFA'sız bırakılmamalı.
 - Secret store kullanılmalı; `.env` dosyası production sunucuda kalıcı operasyon standardı olmamalı.
 - Container image digest pinleme ve imaj zafiyet taraması CI/CD’ye bağlanmalı.
 - DAST ve manuel OWASP ASVS kontrolü production yayını öncesi çalıştırılmalı.

@@ -258,6 +258,8 @@ public interface ITotpService
 
 public sealed class TotpService : ITotpService
 {
+    private const string Base32Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
     public bool Verify(string secret, string code, DateTimeOffset now)
     {
         if (string.IsNullOrWhiteSpace(code) || code.Length != 6 || code.Any(x => !char.IsDigit(x)))
@@ -265,13 +267,26 @@ public sealed class TotpService : ITotpService
             return false;
         }
 
+        secret = NormalizeSecret(secret);
         var timestep = now.ToUnixTimeSeconds() / 30;
         return Enumerable.Range(-1, 3).Any(offset => Generate(secret, timestep + offset) == code);
     }
 
+    public static string NormalizeSecret(string secret)
+    {
+        var normalized = new string(secret.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        if (normalized.Length < 16 || normalized.Any(ch => Base32Alphabet.IndexOf(ch) < 0))
+        {
+            throw new InvalidOperationException("TOTP secret must be a Base32 value with at least 16 characters.");
+        }
+
+        _ = DecodeBase32(normalized);
+        return normalized;
+    }
+
     private static string Generate(string secret, long timestep)
     {
-        var key = Encoding.UTF8.GetBytes(secret);
+        var key = DecodeBase32(secret);
         var counter = BitConverter.GetBytes(timestep);
         if (BitConverter.IsLittleEndian)
         {
@@ -287,6 +302,36 @@ public sealed class TotpService : ITotpService
             ((hash[offset + 2] & 0xff) << 8) |
             (hash[offset + 3] & 0xff);
         return (binary % 1_000_000).ToString("D6");
+    }
+
+    private static byte[] DecodeBase32(string value)
+    {
+        var bits = 0;
+        var bitBuffer = 0;
+        var output = new List<byte>();
+        foreach (var ch in value.TrimEnd('='))
+        {
+            var index = Base32Alphabet.IndexOf(ch);
+            if (index < 0)
+            {
+                throw new InvalidOperationException("TOTP secret must be Base32 encoded.");
+            }
+
+            bitBuffer = (bitBuffer << 5) | index;
+            bits += 5;
+            if (bits >= 8)
+            {
+                output.Add((byte)((bitBuffer >> (bits - 8)) & 0xff));
+                bits -= 8;
+            }
+        }
+
+        if (output.Count < 10)
+        {
+            throw new InvalidOperationException("TOTP secret must decode to at least 10 bytes.");
+        }
+
+        return output.ToArray();
     }
 }
 

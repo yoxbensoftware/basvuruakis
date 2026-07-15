@@ -16,6 +16,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - KVKK onay kayıtları.
 - Otomatik temsilcilik atama.
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
+- Production ilk admin bootstrap'i ve MFA zorunluluğu.
 - KVKK veri sahibi talebi için gerekçeli başvuru anonimleştirme.
 - Audit/security log temeli ve permission kontrollü okuma endpointleri.
 - CSV/XLSX export sanitization.
@@ -33,7 +34,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Secret manager.
 - TLS/HSTS ve production domain.
 - Production PostgreSQL backup/WAL/PITR.
-- Admin MFA zorunluluğu ve ilk admin bootstrap prosedürü.
+- İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
 - KVKK metinlerinin hukuk onayı.
 - Staging yük testi ve güvenlik scanleri.
 
@@ -41,7 +42,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 17/17 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 21/21 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -67,4 +68,4 @@ Render ek doğrulaması:
 
 Sunum/demo/staging: Render üzerinde canlı ve doğrulanmış durumda.
 
-Production: dış servis secret’ları, WAF/TLS, MFA zorunluluğu, backup restore testi, staging load test ve hukuk onayları tamamlanmadan yayın kararı verilmemelidir.
+Production: dış servis secret’ları, WAF/TLS, backup restore testi, staging load test ve hukuk onayları tamamlanmadan yayın kararı verilmemelidir.

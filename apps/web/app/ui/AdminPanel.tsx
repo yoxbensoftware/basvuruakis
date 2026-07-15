@@ -98,8 +98,9 @@ type SecurityLogItem = {
 };
 
 export function AdminPanel() {
-  const [email, setEmail] = useState("admin@basvuruakis.local");
-  const [password, setPassword] = useState("ChangeMe!12345");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [applications, setApplications] = useState<PagedApplications | null>(null);
@@ -125,7 +126,7 @@ export function AdminPanel() {
     try {
       const result = await apiFetch<LoginResponse>("/api/admin/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password, totpCode: null })
+        body: JSON.stringify({ email, password, totpCode: totpCode.trim() || null })
       });
       setToken(result.accessToken);
       await loadAdminData(result.accessToken);
@@ -319,6 +320,16 @@ export function AdminPanel() {
           <div className="field">
             <label htmlFor="admin-password">Parola</label>
             <input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="admin-totp">MFA kodu</label>
+            <input
+              id="admin-totp"
+              value={totpCode}
+              onChange={(event) => setTotpCode(event.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+            />
           </div>
           <div className="field full">
             <button type="submit" disabled={loading}>Giriş yap</button>

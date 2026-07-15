@@ -102,6 +102,10 @@ using (var scope = app.Services.CreateScope())
         await db.Database.EnsureCreatedAsync();
         await DemoSeed.SeedAsync(scope.ServiceProvider);
     }
+    else
+    {
+        await ProductionBootstrap.EnsureAdminAsync(scope.ServiceProvider);
+    }
 }
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));

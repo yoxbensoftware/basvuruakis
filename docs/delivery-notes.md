@@ -11,6 +11,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Next/React/TypeScript/ESLint paketleri exact pinlendi. `postcss` transitive güvenlik bulgusu `pnpm-workspace.yaml` override ile `8.5.10` sürümüne çekildi.
 - pnpm build script onayı yalnızca `sharp` ve `unrs-resolver` için verildi.
 - Admin başvuru listesi ve CSV/XLSX export aynı filtre yardımcısını kullanır. Hassas TCKN/telefon/e-posta aramaları normalize HMAC lookup hash ile yapılır; temsilcilik filtresi en son atama kaydını baz alır.
+- Production ilk admin bootstrap'i environment secret değerlerine bağlandı ve MFA'sız admin hesabıyla production başlangıcı engellendi.
 
 ## Production Manuel Konfigürasyonları
 
@@ -24,13 +25,13 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - KVKK metinlerinin hukuk onayı ve saklama sürelerinin veri sorumlusu tarafından kesinleştirilmesi.
 - Production image digest pinleme ve container scan.
 - Tam staging yük testi.
-- Admin MFA zorunluluğu ve ilk admin bootstrap prosedürünün operasyonel hale getirilmesi.
+- İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
 
 ## Doğrulama Günlüğü
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 17/17 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 21/21 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

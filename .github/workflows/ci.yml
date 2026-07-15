@@ -60,4 +60,7 @@ jobs:
           SECURITY_ENCRYPTION_KEY: ci-compose-config-encryption-key
           SECURITY_LOOKUP_KEY: ci-compose-config-lookup-key
           JWT_SIGNING_KEY: ci-compose-config-jwt-key
+          ADMIN_BOOTSTRAP_EMAIL: admin@example.test
+          ADMIN_BOOTSTRAP_PASSWORD: CorrectHorse!42X
+          ADMIN_BOOTSTRAP_MFA_SECRET: JBSWY3DPEHPK3PXP
         run: docker compose -f infrastructure/docker-compose.yml config

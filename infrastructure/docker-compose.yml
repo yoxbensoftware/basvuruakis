@@ -51,6 +51,9 @@ services:
       Security__EncryptionKey: ${SECURITY_ENCRYPTION_KEY:?SECURITY_ENCRYPTION_KEY is required}
       Security__LookupKey: ${SECURITY_LOOKUP_KEY:?SECURITY_LOOKUP_KEY is required}
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY is required}
+      AdminBootstrap__Email: ${ADMIN_BOOTSTRAP_EMAIL:?ADMIN_BOOTSTRAP_EMAIL is required}
+      AdminBootstrap__Password: ${ADMIN_BOOTSTRAP_PASSWORD:?ADMIN_BOOTSTRAP_PASSWORD is required}
+      AdminBootstrap__MfaSecret: ${ADMIN_BOOTSTRAP_MFA_SECRET:?ADMIN_BOOTSTRAP_MFA_SECRET is required}
       Captcha__TurnstileSecret: ${TURNSTILE_SECRET:-}
       Sms__Provider: ${SMS_PROVIDER:-}
       Sms__ApiKey: ${SMS_API_KEY:-}

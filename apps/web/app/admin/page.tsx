@@ -4,7 +4,7 @@ export default function AdminPage() {
   return (
     <section className="section">
       <h1>Yönetim Paneli</h1>
-      <p className="lead">Demo giriş: admin@basvuruakis.local / ChangeMe!12345</p>
+      <p className="lead">Yetkili kullanıcılar için güvenli başvuru yönetimi.</p>
       <AdminPanel />
     </section>
   );

@@ -54,7 +54,7 @@ Notlar:
 
 - Blueprint free plan ile tanımlıdır; Render free servisleri boşta uyuyabilir ve ilk istek yavaş gelebilir.
 - API `ASPNETCORE_ENVIRONMENT=Staging` ile çalışır. Bu, müşteri demosu için sahte OTP/CAPTCHA adapter'larını ve otomatik veritabanı şema oluşturmayı aktif tutar.
-- Production'a geçerken `ASPNETCORE_ENVIRONMENT=Production` yapılmalı, gerçek SMS/CAPTCHA/object storage ayarları eklenmeli ve migration süreci kontrollü yürütülmelidir.
+- Production'a geçerken `ASPNETCORE_ENVIRONMENT=Production` yapılmalı; gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret` ve kontrollü migration süreci hazırlanmalıdır.
 - Web, API host bilgisini Render'ın `RENDER_EXTERNAL_HOSTNAME` değerinden alır. API CORS origin'i web servisinin `RENDER_EXTERNAL_URL` değerine bağlanır.
 
 ## Production Notları

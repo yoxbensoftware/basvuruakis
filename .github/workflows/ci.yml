@@ -45,6 +45,37 @@ jobs:
       - name: Validate EF migrations
         run: dotnet tool run dotnet-ef migrations script --idempotent --project apps/api/BasvuruAkis.Api.csproj --startup-project apps/api/BasvuruAkis.Api.csproj --context AppDbContext --output /tmp/basvuruakis-migrations.sql
 
+      - name: Validate production operations scripts
+        shell: pwsh
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+          Database__Provider: Postgres
+          ConnectionStrings__Postgres: Host=db.example.test;Port=5432;Database=basvuruakis;Username=basvuruakis;Password=test
+          Security__EncryptionKey: ci-production-config-encryption-key-32-plus
+          Security__LookupKey: ci-production-config-lookup-key-32-plus
+          Jwt__SigningKey: ci-production-config-jwt-key-32-plus
+          AdminBootstrap__Email: admin@example.test
+          AdminBootstrap__Password: CorrectHorse!42X
+          AdminBootstrap__MfaSecret: JBSWY3DPEHPK3PXP
+          Captcha__TurnstileSecret: ci-turnstile-secret
+          Sms__Provider: http-json
+          Sms__ApiKey: ci-sms-api-key
+          Sms__Endpoint: https://sms.example.test/messages
+          Sms__Sender: BasvuruAkis
+          Sms__MessageTemplate: "Basvuru dogrulama kodunuz: {code}"
+          Cors__AllowedOrigins__0: https://app.example.test
+          NEXT_PUBLIC_CAPTCHA_PROVIDER: turnstile
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+          NEXT_PUBLIC_API_URL: https://api.example.test
+        run: |
+          ./infrastructure/production/test-production-env.ps1
+          ./infrastructure/production/new-production-secrets.ps1 -AdminEmail admin@example.test -OutputPath "$env:RUNNER_TEMP/generated.env" -Force
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP/legal" | Out-Null
+          Set-Content -Path "$env:RUNNER_TEMP/legal/privacy.txt" -Value "Onayli KVKK aydinlatma metni." -Encoding utf8NoBOM
+          Set-Content -Path "$env:RUNNER_TEMP/legal/consent.txt" -Value "Onayli acik riza metni." -Encoding utf8NoBOM
+          ./infrastructure/production/new-operational-seed-sql.ps1 -PrivacyNoticeFile "$env:RUNNER_TEMP/legal/privacy.txt" -ExplicitConsentFile "$env:RUNNER_TEMP/legal/consent.txt" -OutputPath "$env:RUNNER_TEMP/operational-seed.sql"
+          if (-not (Test-Path "$env:RUNNER_TEMP/operational-seed.sql")) { throw "Operational seed SQL was not generated." }
+
       - name: Scan NuGet packages
         run: |
           dotnet list apps/api/BasvuruAkis.Api.csproj package --vulnerable --include-transitive

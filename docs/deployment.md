@@ -62,6 +62,20 @@ Notlar:
 
 Production API startup otomatik `EnsureCreated` veya `Migrate` çalıştırmaz. Migration ayrı ve kontrollü release job olarak çalıştırılmalıdır.
 
+Komutlu production runbook için önce `docs/production-cutover-checklist.md` dosyasını uygula.
+
+Production-owned secret değerlerini üretmek için:
+
+```powershell
+.\infrastructure\production\new-production-secrets.ps1 -AdminEmail "admin@example.com" -OutputPath .\artifacts\production\generated.env -Force
+```
+
+Secret manager değerlerini doğrulamak için:
+
+```powershell
+.\infrastructure\production\test-production-env.ps1
+```
+
 Araçları geri yükle:
 
 ```powershell
@@ -80,7 +94,24 @@ Kontrollü ortamda doğrudan uygula:
 dotnet tool run dotnet-ef database update --project .\apps\api\BasvuruAkis.Api.csproj --startup-project .\apps\api\BasvuruAkis.Api.csproj --context AppDbContext --connection "<production-postgres-connection-string>"
 ```
 
+Repository içindeki kontrollü wrapper aynı SQL'i üretir ve yalnızca `-Apply` verilirse migration uygular:
+
+```powershell
+.\infrastructure\production\invoke-production-migration.ps1
+.\infrastructure\production\invoke-production-migration.ps1 -ConnectionString "<production-postgres-connection-string>" -Apply
+```
+
 Production uygulamadan önce backup alınmalı, script review edilmeli ve rollback planı hazır olmalıdır.
+
+Production readiness için zorunlu operasyon verisi SQL'i:
+
+```powershell
+.\infrastructure\production\new-operational-seed-sql.ps1 `
+  -PrivacyNoticeFile .\artifacts\legal\privacy-notice.txt `
+  -ExplicitConsentFile .\artifacts\legal\explicit-consent.txt `
+  -CookiePolicyFile .\artifacts\legal\cookie-policy.txt `
+  -LegalVersion "2026-07-16"
+```
 
 ## Production Notları
 

@@ -58,3 +58,11 @@ Production ortamında aşağıdaki değerler environment/secret store üzerinden
 - S3/object storage credential.
 
 Development fake provider’lar yalnızca development ortamında aktiftir.
+
+Production geçişi için uygulanacak komutlu runbook:
+
+- `docs/production-cutover-checklist.md`
+- `infrastructure/production/new-production-secrets.ps1`
+- `infrastructure/production/test-production-env.ps1`
+- `infrastructure/production/invoke-production-migration.ps1`
+- `infrastructure/production/new-operational-seed-sql.ps1`

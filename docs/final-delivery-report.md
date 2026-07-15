@@ -33,6 +33,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Web typecheck/lint/build.
 - Operasyon ve güvenlik dokümantasyonu.
 - Render Blueprint ile free plan demo/staging deployment.
+- Production cutover checklist, secret üretim, env doğrulama, migration wrapper ve operasyon seed SQL üretim scriptleri.
 
 ## Manuel Konfigürasyon Gerektirenler
 
@@ -67,6 +68,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde `InitialCreate`, `AddRelationalConstraints` ve `EnforceSingleActiveLegalText` migration apply başarılı.
 - `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
+- Production operasyon scriptleri CI içinde env doğrulama, secret skeleton üretimi ve operasyon seed SQL üretimiyle kontrol edilir.
 
 Render ek doğrulaması:
 

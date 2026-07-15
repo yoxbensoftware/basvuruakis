@@ -24,6 +24,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Production readiness kontrolü başvuru alabilmek için zorunlu operasyon verileri eksikse 503 dönecek şekilde sıkılaştırıldı.
 - Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
 - Web response security header'ları ve API production HSTS eklendi.
+- Production cutover checklist, secret üretim, env doğrulama, migration wrapper ve operasyon seed SQL üretim scriptleri eklendi.
 
 ## Production Manuel Konfigürasyonları
 
@@ -39,6 +40,14 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Tam staging yük testi.
 - İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
 - Aktif KVKK/açık rıza metinleri, lokasyon referans verisi ve aktif default temsilcilik production migration/seed sürecinde yüklenmelidir.
+
+## Production Yardımcı Komutları
+
+- `docs/production-cutover-checklist.md`: production trafiği açmadan önce uygulanacak gate listesi.
+- `infrastructure/production/new-production-secrets.ps1`: güçlü random application secret, admin parolası ve Base32 MFA secret üretir.
+- `infrastructure/production/test-production-env.ps1`: production env değerlerinin eksik veya riskli olup olmadığını kontrol eder.
+- `infrastructure/production/invoke-production-migration.ps1`: idempotent EF migration SQL'i üretir; yalnızca `-Apply` ile veritabanına uygular.
+- `infrastructure/production/new-operational-seed-sql.ps1`: hukuk onaylı metin dosyalarından production readiness için operasyon seed SQL'i üretir.
 
 ## Doğrulama Günlüğü
 

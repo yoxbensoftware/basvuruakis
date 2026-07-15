@@ -10,6 +10,18 @@ Bu aşamada k6 smoke senaryosu `infrastructure/k6/smoke.js` olarak eklendi. Tam 
 k6 run -e BASE_URL=http://localhost:8080 .\infrastructure\k6\smoke.js
 ```
 
+Render gibi web ve API ayrı hostlarda çalışıyorsa:
+
+```powershell
+k6 run -e WEB_BASE_URL=https://basvuruakis-web.onrender.com -e API_BASE_URL=https://basvuruakis-api.onrender.com .\infrastructure\k6\smoke.js
+```
+
+Smoke senaryosu:
+
+- Web ana sayfa ve başvuru sayfasını açar.
+- API live/ready health endpointlerini kontrol eder.
+- İlk iterasyonda aktif KVKK metinlerini, demo OTP request’i ve admin login’i doğrular.
+
 ## Kabul Hedefleri
 
 - Normal yükte başvuru API p95 < 2 saniye.

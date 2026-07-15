@@ -72,7 +72,7 @@ Render ek doğrulaması:
 
 - `render.yaml` resmi Blueprint yapısına göre root seviyede API, web ve Postgres kaynaklarını tanımlar.
 - `https://render.com/schema/render.yaml.json` ile `render.yaml` schema validation başarılı.
-- `infrastructure/k6/smoke.js` web/API ayrı hostlu Render smoke kontrolünü destekler.
+- `infrastructure/k6/smoke.js` web/API ayrı hostlu Render smoke kontrolünü, OTP doğrulama, başvuru oluşturma, admin liste ve CSV export akışını destekler.
 - Render Blueprint deploy tamamlandı.
 - API URL: `https://basvuruakis-api.onrender.com`.
 - Web URL: `https://basvuruakis-web.onrender.com`.

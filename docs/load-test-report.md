@@ -20,7 +20,9 @@ Smoke senaryosu:
 
 - Web ana sayfa ve başvuru sayfasını açar.
 - API live/ready health endpointlerini kontrol eder.
-- İlk iterasyonda aktif KVKK metinlerini, demo OTP request’i ve admin login’i doğrular.
+- İlk iterasyonda aktif KVKK metinlerini kontrol eder.
+- İlk VU'nun ilk iterasyonunda OTP request/verify, başvuru oluşturma, admin login, admin başvuru listesi ve CSV export akışını doğrular.
+- Demo ortamında OTP doğrulaması API'nin döndürdüğü `developmentCode` ile yapılır; production benzeri ortamda `OTP_CODE` ve gerekirse `ADMIN_TOTP_CODE` environment değerleri verilebilir.
 
 ## Kabul Hedefleri
 

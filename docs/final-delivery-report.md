@@ -77,6 +77,7 @@ Render ek doğrulaması:
 - API URL: `https://basvuruakis-api.onrender.com`.
 - Web URL: `https://basvuruakis-web.onrender.com`.
 - Canlı smoke: API `/health/live` ve `/health/ready` 200; web `/`, `/basvuru`, `/admin` 200; `/basvuru` ekranında aktif KVKK metinleri yükleniyor.
+- Canlı full smoke: OTP request/verify, başvuru oluşturma, admin login, e-posta filtresiyle admin liste ve CSV export 200.
 
 ## Production Yayın Kararı
 

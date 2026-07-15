@@ -61,3 +61,4 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 - `render.yaml` resmi Render schema ile doğrulandı.
 - Render demo/staging canlı kontrolü başarılı: API `/health/live` ve `/health/ready` 200, web `/`, `/basvuru`, `/admin` 200.
+- Render demo/staging canlı full smoke başarılı: OTP request/verify, başvuru oluşturma, admin login, e-posta filtresiyle admin liste ve CSV export 200.

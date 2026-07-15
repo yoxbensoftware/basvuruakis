@@ -128,7 +128,7 @@ function runApplicationAdminSmoke() {
   const exported = http.post(
     `${apiBaseUrl}/api/admin/exports`,
     JSON.stringify({
-      format: "Csv",
+      format: 0,
       filters: {
         ...emptyApplicationFilters(),
         email

@@ -54,9 +54,12 @@ services:
       AdminBootstrap__Email: ${ADMIN_BOOTSTRAP_EMAIL:?ADMIN_BOOTSTRAP_EMAIL is required}
       AdminBootstrap__Password: ${ADMIN_BOOTSTRAP_PASSWORD:?ADMIN_BOOTSTRAP_PASSWORD is required}
       AdminBootstrap__MfaSecret: ${ADMIN_BOOTSTRAP_MFA_SECRET:?ADMIN_BOOTSTRAP_MFA_SECRET is required}
-      Captcha__TurnstileSecret: ${TURNSTILE_SECRET:-}
-      Sms__Provider: ${SMS_PROVIDER:-}
-      Sms__ApiKey: ${SMS_API_KEY:-}
+      Captcha__TurnstileSecret: ${TURNSTILE_SECRET:?TURNSTILE_SECRET is required}
+      Sms__Provider: ${SMS_PROVIDER:?SMS_PROVIDER is required}
+      Sms__ApiKey: ${SMS_API_KEY:?SMS_API_KEY is required}
+      Sms__Endpoint: ${SMS_ENDPOINT:?SMS_ENDPOINT is required}
+      Sms__Sender: ${SMS_SENDER:-BasvuruAkis}
+      Sms__MessageTemplate: "${SMS_MESSAGE_TEMPLATE:-Basvuru dogrulama kodunuz: {code}}"
       Cors__AllowedOrigins__0: http://localhost:8080
     depends_on:
       postgres:
@@ -75,8 +78,14 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+        NEXT_PUBLIC_CAPTCHA_PROVIDER: ${NEXT_PUBLIC_CAPTCHA_PROVIDER:?NEXT_PUBLIC_CAPTCHA_PROVIDER is required}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:?NEXT_PUBLIC_TURNSTILE_SITE_KEY is required}
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_CAPTCHA_PROVIDER: ${NEXT_PUBLIC_CAPTCHA_PROVIDER:?NEXT_PUBLIC_CAPTCHA_PROVIDER is required}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:?NEXT_PUBLIC_TURNSTILE_SITE_KEY is required}
     depends_on:
       api:
         condition: service_healthy

@@ -63,4 +63,10 @@ jobs:
           ADMIN_BOOTSTRAP_EMAIL: admin@example.test
           ADMIN_BOOTSTRAP_PASSWORD: CorrectHorse!42X
           ADMIN_BOOTSTRAP_MFA_SECRET: JBSWY3DPEHPK3PXP
+          TURNSTILE_SECRET: ci-turnstile-secret
+          NEXT_PUBLIC_CAPTCHA_PROVIDER: turnstile
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+          SMS_PROVIDER: http-json
+          SMS_API_KEY: ci-sms-api-key
+          SMS_ENDPOINT: https://sms.example.test/messages
         run: docker compose -f infrastructure/docker-compose.yml config

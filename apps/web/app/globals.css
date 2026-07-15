@@ -231,6 +231,10 @@ textarea {
   margin-bottom: 0;
 }
 
+.captcha-field {
+  min-height: 96px;
+}
+
 input:focus,
 select:focus,
 textarea:focus,

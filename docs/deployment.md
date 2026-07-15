@@ -17,7 +17,7 @@ pnpm --dir .\apps\web dev
 ## Docker Compose
 
 1. `infrastructure/.env.example` dosyasını `infrastructure/.env` olarak kopyala.
-2. Secret değerlerini değiştir.
+2. Secret değerlerini değiştir. Compose dosyası production-like çalışır; Turnstile site/secret ve `http-json` SMS endpoint değerleri verilmeden config üretmez.
 3. Çalıştır:
 
 ```powershell
@@ -54,12 +54,14 @@ Notlar:
 
 - Blueprint free plan ile tanımlıdır; Render free servisleri boşta uyuyabilir ve ilk istek yavaş gelebilir.
 - API `ASPNETCORE_ENVIRONMENT=Staging` ile çalışır. Bu, müşteri demosu için sahte OTP/CAPTCHA adapter'larını ve otomatik veritabanı şema oluşturmayı aktif tutar.
-- Production'a geçerken `ASPNETCORE_ENVIRONMENT=Production` yapılmalı; gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret` ve kontrollü migration süreci hazırlanmalıdır.
+- Production'a geçerken gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret` ve kontrollü migration süreci hazırlanmalıdır.
 - Web, API host bilgisini Render'ın `RENDER_EXTERNAL_HOSTNAME` değerinden alır. API CORS origin'i web servisinin `RENDER_EXTERNAL_URL` değerine bağlanır.
+- Render Blueprint staging ortamında `NEXT_PUBLIC_CAPTCHA_PROVIDER=development` kullanır; production web build'de `turnstile` ve `NEXT_PUBLIC_TURNSTILE_SITE_KEY` verilmelidir.
 
 ## Production Notları
 
 - Production’da SQLite kullanılmaz; PostgreSQL zorunludur.
 - Migration stratejisi deployment pipeline içinde kontrollü çalıştırılmalıdır.
-- Compose dosyası staging/demo için uygundur. Yüksek trafik production’da managed PostgreSQL, managed Redis, object storage ve edge WAF tercih edilmelidir.
+- Production SMS için `Sms__Provider=http-json`, HTTPS `Sms__Endpoint`, `Sms__ApiKey`, `Sms__Sender` ve `{code}` içeren `Sms__MessageTemplate` gerekir.
+- Compose dosyası production-like local/staging smoke için uygundur. Yüksek trafik production’da managed PostgreSQL, managed Redis, object storage ve edge WAF tercih edilmelidir.
 - Zero/low downtime için API ve web image’ları ayrı taglenmeli, migration ayrı job olarak koşturulmalı, rollback imaj tag’i hazır tutulmalıdır.

@@ -1,7 +1,24 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "./api";
+
+type TurnstileOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  "expired-callback": () => void;
+  "error-callback": () => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: TurnstileOptions) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
 
 type OtpRequestResponse = {
   requestId: string;
@@ -45,16 +62,76 @@ const initialForm = {
   explicitConsentAccepted: false
 };
 
+const captchaProvider = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER ?? "development").trim().toLowerCase();
+const turnstileSiteKey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "").trim();
+const turnstileEnabled = captchaProvider === "turnstile" || turnstileSiteKey.length > 0;
+const turnstileScriptId = "cloudflare-turnstile-script";
+const deviceIdStorageKey = "basvuruakis-device-id";
+
 export function ApplicationForm() {
   const [form, setForm] = useState(initialForm);
   const [otpCode, setOtpCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState(turnstileEnabled ? "" : "demo-ok");
   const [legalTexts, setLegalTexts] = useState<LegalTextResponse[]>([]);
   const [legalTextError, setLegalTextError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const deviceIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!turnstileEnabled) {
+      return;
+    }
+
+    if (!turnstileSiteKey) {
+      return;
+    }
+
+    let cancelled = false;
+    const renderTurnstile = () => {
+      if (cancelled || !turnstileContainerRef.current || !window.turnstile || turnstileWidgetIdRef.current) {
+        return;
+      }
+
+      turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        callback: (token) => setCaptchaToken(token),
+        "expired-callback": () => setCaptchaToken(""),
+        "error-callback": () => setCaptchaToken("")
+      });
+    };
+
+    if (window.turnstile) {
+      renderTurnstile();
+    } else {
+      const existingScript = document.getElementById(turnstileScriptId);
+      if (existingScript) {
+        existingScript.addEventListener("load", renderTurnstile, { once: true });
+      } else {
+        const script = document.createElement("script");
+        script.id = turnstileScriptId;
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.addEventListener("load", renderTurnstile, { once: true });
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      const widgetId = turnstileWidgetIdRef.current;
+      if (widgetId && window.turnstile) {
+        window.turnstile.remove(widgetId);
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,21 +156,31 @@ export function ApplicationForm() {
   async function requestOtp() {
     setError(null);
     setStatus(null);
+    if (turnstileEnabled && !turnstileSiteKey) {
+      setError("CAPTCHA yapılandırması eksik.");
+      return;
+    }
+    if (turnstileEnabled && !captchaToken) {
+      setError("CAPTCHA doğrulamasını tamamlayın.");
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await apiFetch<OtpRequestResponse>("/api/otp/request", {
         method: "POST",
         body: JSON.stringify({
           phone: form.phone,
-          captchaToken: "demo-ok",
-          deviceId: "web-demo"
+          captchaToken,
+          deviceId: getDeviceId()
         })
       });
       setDevCode(result.developmentCode ?? null);
-      setStatus("OTP kodu gönderildi. Demo ortamında kod ekranda gösterilir.");
+      setStatus(result.developmentCode ? "OTP kodu gönderildi. Demo ortamında kod ekranda gösterilir." : "OTP kodu gönderildi.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP isteği başarısız.");
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   }
@@ -108,7 +195,7 @@ export function ApplicationForm() {
         body: JSON.stringify({
           phone: form.phone,
           code: otpCode,
-          deviceId: "web-demo"
+          deviceId: getDeviceId()
         })
       });
       setVerificationToken(result.verificationToken);
@@ -150,6 +237,23 @@ export function ApplicationForm() {
     }
   }
 
+  function resetCaptcha() {
+    if (!turnstileEnabled) {
+      return;
+    }
+
+    const widgetId = turnstileWidgetIdRef.current;
+    if (widgetId && window.turnstile) {
+      window.turnstile.reset(widgetId);
+    }
+    setCaptchaToken("");
+  }
+
+  function getDeviceId() {
+    deviceIdRef.current ??= resolveDeviceId();
+    return deviceIdRef.current;
+  }
+
   return (
     <form className="form-card" onSubmit={submitApplication}>
       {error && <div className="status error" role="alert">{error}</div>}
@@ -164,11 +268,21 @@ export function ApplicationForm() {
         <TextField label="Telefon" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} inputMode="tel" />
         <TextField label="E-posta" value={form.email} onChange={(value) => setForm({ ...form, email: value })} inputMode="email" />
         <TextField label="Posta kodu" value={form.postalCode} onChange={(value) => setForm({ ...form, postalCode: value })} inputMode="numeric" required={false} />
+        {turnstileEnabled && (
+          <div className="field full captcha-field">
+            <label>CAPTCHA doğrulaması</label>
+            {turnstileSiteKey ? (
+              <div ref={turnstileContainerRef} />
+            ) : (
+              <p className="muted">CAPTCHA yapılandırması eksik.</p>
+            )}
+          </div>
+        )}
         <div className="field">
           <label htmlFor="otp">OTP kodu</label>
           <input id="otp" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} inputMode="numeric" />
           <div className="actions">
-            <button type="button" className="secondary" onClick={requestOtp} disabled={loading || !form.phone}>OTP iste</button>
+            <button type="button" className="secondary" onClick={requestOtp} disabled={loading || !form.phone || (turnstileEnabled && (!turnstileSiteKey || !captchaToken))}>OTP iste</button>
             <button type="button" className="secondary" onClick={verifyOtp} disabled={loading || !otpCode}>OTP doğrula</button>
           </div>
         </div>
@@ -219,6 +333,27 @@ export function ApplicationForm() {
       </div>
     </form>
   );
+}
+
+function resolveDeviceId(): string {
+  try {
+    const existing = window.localStorage.getItem(deviceIdStorageKey);
+    if (existing) {
+      return existing;
+    }
+
+    const next = createDeviceId();
+    window.localStorage.setItem(deviceIdStorageKey, next);
+    return next;
+  } catch {
+    return createDeviceId();
+  }
+}
+
+function createDeviceId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function TextField({

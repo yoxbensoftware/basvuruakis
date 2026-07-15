@@ -48,6 +48,8 @@ services:
           type: web
           name: basvuruakis-api
           envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: NEXT_PUBLIC_CAPTCHA_PROVIDER
+        value: development
     buildFilter:
       paths:
         - .dockerignore

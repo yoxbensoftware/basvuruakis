@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json;
 using BasvuruAkis.Api;
 using BasvuruAkis.Api.Data;
 using BasvuruAkis.Api.Domain;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace BasvuruAkis.Api.Tests;
@@ -145,6 +148,18 @@ public sealed class DomainSecurityTests
     }
 
     [Fact]
+    public async Task ProductionBootstrap_RejectsInvalidProductionIntegrationConfiguration()
+    {
+        await using var fixture = await ProductionBootstrapFixture.CreateAsync(new Dictionary<string, string?>
+        {
+            ["Sms:Provider"] = "log-only"
+        });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => ProductionBootstrap.EnsureAdminAsync(fixture.Services));
+        Assert.Contains("Sms:Provider", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TotpService_NormalizesBase32Secrets()
     {
         Assert.Equal("JBSWY3DPEHPK3PXP", TotpService.NormalizeSecret("jb swy3dp-ehpk3pxp"));
@@ -152,10 +167,96 @@ public sealed class DomainSecurityTests
         Assert.Throws<InvalidOperationException>(() => TotpService.NormalizeSecret("not-valid"));
     }
 
+    [Fact]
+    public async Task SmsProvider_SendsProductionHttpJsonRequest()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.Accepted);
+        var provider = new SmsProvider(
+            ProductionSmsConfiguration(new Dictionary<string, string?>()),
+            new TestEnvironment(),
+            new StaticHttpClientFactory(handler),
+            LoggerFactory.Create(_ => { }).CreateLogger<SmsProvider>());
+
+        await provider.SendOtpAsync("905321112233", "123456", CancellationToken.None);
+
+        Assert.Equal(HttpMethod.Post, handler.RequestMethod);
+        Assert.Equal("https://sms.example.test/messages", handler.RequestUri?.ToString());
+        Assert.Equal("Bearer", handler.AuthorizationScheme);
+        Assert.Equal("test-sms-api-key", handler.AuthorizationParameter);
+        Assert.NotNull(handler.JsonPayload);
+        var root = handler.JsonPayload.RootElement;
+        Assert.Equal("905321112233", root.GetProperty("to").GetString());
+        Assert.Equal("BasvuruAkis", root.GetProperty("sender").GetString());
+        Assert.Contains("123456", root.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SmsProvider_RejectsUnsupportedProductionProviders()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.Accepted);
+        var provider = new SmsProvider(
+            ProductionSmsConfiguration(new Dictionary<string, string?>
+            {
+                ["Sms:Provider"] = "log-only"
+            }),
+            new TestEnvironment(),
+            new StaticHttpClientFactory(handler),
+            LoggerFactory.Create(_ => { }).CreateLogger<SmsProvider>());
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.SendOtpAsync("905321112233", "123456", CancellationToken.None));
+        Assert.Contains("Unsupported production SMS provider", error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, handler.SendCount);
+    }
+
+    private static IConfiguration ProductionSmsConfiguration(Dictionary<string, string?> overrides)
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["Sms:Provider"] = "http-json",
+            ["Sms:ApiKey"] = "test-sms-api-key",
+            ["Sms:Endpoint"] = "https://sms.example.test/messages",
+            ["Sms:Sender"] = "BasvuruAkis",
+            ["Sms:MessageTemplate"] = "Kodunuz: {code}"
+        };
+        foreach (var (key, value) in overrides)
+        {
+            values[key] = value;
+        }
+
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
+
     private sealed class StaticKeyProvider : IDataProtectionKeyProvider
     {
         public byte[] EncryptionKey { get; } = Enumerable.Range(0, 32).Select(x => (byte)x).ToArray();
         public byte[] LookupKey { get; } = Enumerable.Range(32, 32).Select(x => (byte)x).ToArray();
+    }
+
+    private sealed class StaticHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
+
+    private sealed class RecordingHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    {
+        public int SendCount { get; private set; }
+        public HttpMethod? RequestMethod { get; private set; }
+        public Uri? RequestUri { get; private set; }
+        public string? AuthorizationScheme { get; private set; }
+        public string? AuthorizationParameter { get; private set; }
+        public JsonDocument JsonPayload { get; private set; } = null!;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            SendCount += 1;
+            RequestMethod = request.Method;
+            RequestUri = request.RequestUri;
+            AuthorizationScheme = request.Headers.Authorization?.Scheme;
+            AuthorizationParameter = request.Headers.Authorization?.Parameter;
+            var payload = request.Content is null ? "{}" : await request.Content.ReadAsStringAsync(cancellationToken);
+            JsonPayload = JsonDocument.Parse(payload);
+            return new HttpResponseMessage(statusCode);
+        }
     }
 
     private sealed class ProductionBootstrapFixture : IAsyncDisposable
@@ -173,8 +274,24 @@ public sealed class DomainSecurityTests
         public static async Task<ProductionBootstrapFixture> CreateAsync(Dictionary<string, string?> configuration)
         {
             var dbPath = Path.Combine(Path.GetTempPath(), $"basvuruakis-bootstrap-{Guid.NewGuid():N}.db");
+            var values = new Dictionary<string, string?>
+            {
+                ["AdminBootstrap:Email"] = "owner@example.test",
+                ["AdminBootstrap:Password"] = "CorrectHorse!42X",
+                ["AdminBootstrap:MfaSecret"] = "JBSWY3DPEHPK3PXP",
+                ["Captcha:TurnstileSecret"] = "test-turnstile-secret",
+                ["Sms:Provider"] = "http-json",
+                ["Sms:ApiKey"] = "test-sms-api-key",
+                ["Sms:Endpoint"] = "https://sms.example.test/messages",
+                ["Sms:MessageTemplate"] = "Kodunuz: {code}"
+            };
+            foreach (var (key, value) in configuration)
+            {
+                values[key] = value;
+            }
+
             var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
+            services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
             services.AddSingleton<IWebHostEnvironment>(new TestEnvironment());
             services.AddSingleton<ISystemClock>(new TestClock());
             services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));

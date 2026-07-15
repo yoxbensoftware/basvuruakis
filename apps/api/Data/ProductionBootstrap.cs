@@ -6,6 +6,8 @@ namespace BasvuruAkis.Api.Data;
 
 public static class ProductionBootstrap
 {
+    private const string HttpJsonSmsProvider = "http-json";
+
     public static async Task EnsureAdminAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         var environment = services.GetRequiredService<IWebHostEnvironment>();
@@ -17,6 +19,8 @@ public static class ProductionBootstrap
         var db = services.GetRequiredService<AppDbContext>();
         var configuration = services.GetRequiredService<IConfiguration>();
         var clock = services.GetRequiredService<ISystemClock>();
+
+        ValidateExternalIntegrations(configuration);
 
         if (!await db.AdminUsers.AnyAsync(cancellationToken))
         {
@@ -77,10 +81,34 @@ public static class ProductionBootstrap
         var value = configuration[key];
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new InvalidOperationException($"{key} is required when bootstrapping the first production admin.");
+            throw new InvalidOperationException($"{key} is required in production.");
         }
 
         return value.Trim();
+    }
+
+    private static void ValidateExternalIntegrations(IConfiguration configuration)
+    {
+        _ = Required(configuration, "Captcha:TurnstileSecret");
+
+        var smsProvider = Required(configuration, "Sms:Provider");
+        if (!smsProvider.Equals(HttpJsonSmsProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Sms:Provider must be {HttpJsonSmsProvider} in production.");
+        }
+
+        _ = Required(configuration, "Sms:ApiKey");
+        var endpoint = Required(configuration, "Sms:Endpoint");
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) || endpointUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new InvalidOperationException("Sms:Endpoint must be an absolute HTTPS URL in production.");
+        }
+
+        var messageTemplate = configuration["Sms:MessageTemplate"];
+        if (!string.IsNullOrWhiteSpace(messageTemplate) && !messageTemplate.Contains("{code}", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Sms:MessageTemplate must include the {code} placeholder.");
+        }
     }
 
     private static void ValidateEmail(string email)

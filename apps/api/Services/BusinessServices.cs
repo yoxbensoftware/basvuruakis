@@ -5,6 +5,8 @@ using BasvuruAkis.Api.Data;
 using BasvuruAkis.Api.Domain;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace BasvuruAkis.Api.Services;
 
@@ -56,26 +58,79 @@ public interface ISmsProvider
     Task SendOtpAsync(string normalizedPhone, string code, CancellationToken cancellationToken);
 }
 
-public sealed class SmsProvider(IConfiguration configuration, IWebHostEnvironment environment, ILogger<SmsProvider> logger) : ISmsProvider
+public sealed class SmsProvider(
+    IConfiguration configuration,
+    IWebHostEnvironment environment,
+    IHttpClientFactory httpClientFactory,
+    ILogger<SmsProvider> logger) : ISmsProvider
 {
-    public Task SendOtpAsync(string normalizedPhone, string code, CancellationToken cancellationToken)
+    private const string HttpJsonProvider = "http-json";
+
+    public async Task SendOtpAsync(string normalizedPhone, string code, CancellationToken cancellationToken)
     {
         if (!environment.IsProduction())
         {
             logger.LogInformation("Development SMS OTP generated for phone hash target. Code is available only in API response for non-production.");
-            return Task.CompletedTask;
+            return;
         }
 
-        var provider = configuration["Sms:Provider"];
-        var apiKey = configuration["Sms:ApiKey"];
-        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(apiKey))
+        var provider = Required("Sms:Provider");
+        if (!provider.Equals(HttpJsonProvider, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Production SMS provider configuration is required.");
+            throw new InvalidOperationException($"Unsupported production SMS provider '{provider}'. Supported provider: {HttpJsonProvider}.");
         }
 
-        logger.LogInformation("SMS provider adapter called for provider {Provider}.", provider);
-        return Task.CompletedTask;
+        var apiKey = Required("Sms:ApiKey");
+        var endpoint = Required("Sms:Endpoint");
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri) || endpointUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new InvalidOperationException("Sms:Endpoint must be an absolute HTTPS URL in production.");
+        }
+
+        var template = configuration["Sms:MessageTemplate"];
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            template = "Basvuru dogrulama kodunuz: {code}";
+        }
+        if (!template.Contains("{code}", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Sms:MessageTemplate must include the {code} placeholder.");
+        }
+
+        var timeoutSeconds = Math.Clamp(configuration.GetValue("Sms:TimeoutSeconds", 10), 1, 30);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
+        var client = httpClientFactory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpointUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Content = JsonContent.Create(new SmsSendRequest(
+            normalizedPhone,
+            template.Replace("{code}", code, StringComparison.Ordinal),
+            configuration["Sms:Sender"]?.Trim()));
+
+        using var response = await client.SendAsync(request, timeout.Token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"SMS provider call failed with status {(int)response.StatusCode}.");
+        }
+
+        logger.LogInformation("Production SMS provider accepted OTP message.");
     }
+
+    private string Required(string key)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"{key} is required in production.");
+        }
+
+        return value.Trim();
+    }
+
+    private sealed record SmsSendRequest(string To, string Message, string? Sender);
 }
 
 public interface IOtpService
@@ -161,7 +216,17 @@ public sealed class OtpService(
         };
         db.OtpRequests.Add(otp);
         await db.SaveChangesAsync(cancellationToken);
-        await smsProvider.SendOtpAsync(phone, code, cancellationToken);
+        try
+        {
+            await smsProvider.SendOtpAsync(phone, code, cancellationToken);
+        }
+        catch (Exception error) when (error is InvalidOperationException or HttpRequestException or TaskCanceledException)
+        {
+            db.OtpRequests.Remove(otp);
+            await db.SaveChangesAsync(cancellationToken);
+            await securityLog.WriteAsync("otp.sms.failed", null, ipAddress, userAgent, new { deviceId }, cancellationToken);
+            return ServiceResult<OtpRequestResponse>.Fail("sms_delivery_failed", "Doğrulama kodu gönderilemedi. Lütfen daha sonra tekrar deneyin.");
+        }
 
         return ServiceResult<OtpRequestResponse>.Ok(new OtpRequestResponse(
             otp.Id,

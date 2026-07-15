@@ -12,11 +12,13 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - pnpm build script onayı yalnızca `sharp` ve `unrs-resolver` için verildi.
 - Admin başvuru listesi ve CSV/XLSX export aynı filtre yardımcısını kullanır. Hassas TCKN/telefon/e-posta aramaları normalize HMAC lookup hash ile yapılır; temsilcilik filtresi en son atama kaydını baz alır.
 - Production ilk admin bootstrap'i environment secret değerlerine bağlandı ve MFA'sız admin hesabıyla production başlangıcı engellendi.
+- Public başvuru formu Turnstile token akışını destekler; production-like Compose `NEXT_PUBLIC_CAPTCHA_PROVIDER=turnstile` ve site key olmadan build edilmez.
+- Production SMS gönderimi `http-json` adapter ile gerçek HTTPS endpoint çağrısı yapar; log-only/stub provider production’da kabul edilmez.
 
 ## Production Manuel Konfigürasyonları
 
 - Cloudflare domain, DNS, WAF, Turnstile ve rate limit kuralları.
-- SMS provider hesabı, gönderici adı, maliyet limiti ve credential tanımı.
+- SMS provider hesabı, `http-json` uyumlu endpoint, gönderici adı, maliyet limiti ve credential tanımı.
 - S3 uyumlu object storage bucket, lifecycle policy ve credential tanımı.
 - Secret store veya hosting platform secret manager.
 - TLS sertifikası, HSTS ve Nginx/edge yönlendirme.
@@ -31,7 +33,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 21/21 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 24/24 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -40,6 +42,6 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - `pnpm peers check`: peer dependency sorunu yok.
 - `docker compose -f .\infrastructure\docker-compose.yml config`: örnek secret env değerleriyle başarılı.
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
-- `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com -t basvuruakis-web:verify .`: başarılı.
+- `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `render.yaml` resmi Render schema ile doğrulandı.
 - Render demo/staging canlı kontrolü başarılı: API `/health/live` ve `/health/ready` 200, web `/`, `/basvuru`, `/admin` 200.

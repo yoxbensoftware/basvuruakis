@@ -11,7 +11,8 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Next.js TypeScript web.
 - PostgreSQL/Redis/MinIO/Nginx Compose dosyaları.
 - Health/readiness/liveness endpointleri.
-- OTP/CAPTCHA adapter altyapısı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
+- OTP/CAPTCHA adapter altyapısı, Turnstile web token akışı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
+- Production HTTP JSON SMS adapter ve provider stub engeli.
 - Başvuru oluşturma, idempotency, TCKN kontrolü, alan şifreleme, HMAC lookup hash.
 - KVKK onay kayıtları.
 - Otomatik temsilcilik atama.
@@ -29,7 +30,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 ## Manuel Konfigürasyon Gerektirenler
 
 - Cloudflare DNS/WAF/Turnstile.
-- SMS provider hesabı ve credential.
+- SMS provider hesabı, HTTP JSON endpoint'i, sender ve credential.
 - S3 uyumlu production object storage.
 - Secret manager.
 - TLS/HSTS ve production domain.
@@ -42,7 +43,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 21/21 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 24/24 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -52,7 +53,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `pnpm peers check`: peer dependency sorunu yok.
 - `docker compose -f .\infrastructure\docker-compose.yml config`: örnek secret env değerleriyle başarılı.
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
-- `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com -t basvuruakis-web:verify .`: başarılı.
+- `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 
 Render ek doğrulaması:
 
@@ -68,4 +69,4 @@ Render ek doğrulaması:
 
 Sunum/demo/staging: Render üzerinde canlı ve doğrulanmış durumda.
 
-Production: dış servis secret’ları, WAF/TLS, backup restore testi, staging load test ve hukuk onayları tamamlanmadan yayın kararı verilmemelidir.
+Production: dış servis hesapları/secret’ları, WAF/TLS, backup restore testi, staging load test ve hukuk onayları tamamlanmadan yayın kararı verilmemelidir.

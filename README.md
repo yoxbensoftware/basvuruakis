@@ -40,7 +40,7 @@ pnpm dev
 Docker development ortamı:
 
 ```powershell
-docker compose -f .\infrastructure\docker-compose.yml up --build
+docker compose -f .\infrastructure\docker-compose.yml --env-file .\infrastructure\.env up --build
 ```
 
 ## Güvenlik Notu
@@ -52,8 +52,8 @@ Production ortamında aşağıdaki değerler environment/secret store üzerinden
 - JWT signing key.
 - Admin bootstrap secret.
 - Admin bootstrap MFA secret.
-- CAPTCHA secret.
-- SMS provider credential.
+- CAPTCHA secret ve Turnstile site key.
+- SMS provider credential, HTTPS endpoint ve sender.
 - S3/object storage credential.
 
 Development fake provider’lar yalnızca development ortamında aktiftir.

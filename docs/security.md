@@ -11,7 +11,8 @@
 - Ayrı HMAC-SHA-256 lookup hash.
 - OTP hash saklama, 3 dakika süre, 5 deneme, 60 saniye resend cooldown, IP ve cihaz bazlı saatlik rate limit.
 - Başarısız CAPTCHA/OTP doğrulamaları ve OTP rate-limit olayları security log’a yazılır.
-- CAPTCHA production’da Turnstile secret gerektirir.
+- CAPTCHA production’da Turnstile secret ve web build tarafında Turnstile site key gerektirir.
+- Production SMS provider `http-json` HTTPS adapter ile gerçek provider çağrısı yapar; log-only/stub provider kabul edilmez.
 - Development fake provider production ortamında bypass sağlamaz.
 - CSV/XLSX formula injection sanitization.
 - Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, temel CSP.

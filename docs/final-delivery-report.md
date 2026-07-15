@@ -21,6 +21,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - API unit/integration testleri.
 - Web typecheck/lint/build.
 - Operasyon ve güvenlik dokümantasyonu.
+- Render Blueprint ile free plan demo deployment tanımı.
 
 ## Manuel Konfigürasyon Gerektirenler
 
@@ -47,6 +48,12 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `pnpm audit --audit-level moderate`: bilinen vulnerability yok.
 - `pnpm peers check`: peer dependency sorunu yok.
 - `docker compose -f .\infrastructure\docker-compose.yml config`: örnek secret env değerleriyle başarılı.
+
+Render ek doğrulaması:
+
+- `render.yaml` resmi Blueprint yapısına göre root seviyede API, web ve Postgres kaynaklarını tanımlar.
+- `https://render.com/schema/render.yaml.json` ile `render.yaml` schema validation başarılı.
+- Render Dashboard üzerinden Blueprint sync/deploy işlemi Chrome kontrol yetkisi sağlandıktan sonra başlatılmalıdır.
 
 ## Production Yayın Kararı
 

@@ -1,0 +1,64 @@
+services:
+  - type: web
+    name: basvuruakis-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Staging
+      - key: Database__Provider
+        value: Postgres
+      - key: ConnectionStrings__Postgres
+        fromDatabase:
+          name: basvuruakis-db
+          property: connectionString
+      - key: Security__EncryptionKey
+        generateValue: true
+      - key: Security__LookupKey
+        generateValue: true
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: Cors__AllowedOrigins__0
+        fromService:
+          type: web
+          name: basvuruakis-web
+          envVarKey: RENDER_EXTERNAL_URL
+    buildFilter:
+      paths:
+        - apps/api/**
+        - render.yaml
+
+  - type: web
+    name: basvuruakis-web
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: apps/web/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NEXT_PUBLIC_API_HOST
+        fromService:
+          type: web
+          name: basvuruakis-api
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+    buildFilter:
+      paths:
+        - apps/web/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - render.yaml
+
+databases:
+  - name: basvuruakis-db
+    databaseName: basvuruakis
+    user: basvuruakis
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "17"

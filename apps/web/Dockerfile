@@ -13,6 +13,10 @@ COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_HOST
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_HOST=$NEXT_PUBLIC_API_HOST
 RUN pnpm --dir apps/web build
 
 FROM node:24-alpine AS runtime

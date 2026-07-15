@@ -30,6 +30,27 @@ Servisler:
 - API direct: `http://localhost:5000`
 - MinIO console: `http://localhost:9001`
 
+## Render Blueprint
+
+Repository root'undaki `render.yaml`, demo/staging amaçlı Render kurulumu için üç kaynak oluşturur:
+
+- `basvuruakis-api`: Docker tabanlı ASP.NET Core API.
+- `basvuruakis-web`: Docker tabanlı Next.js web arayüzü.
+- `basvuruakis-db`: Render Postgres.
+
+Kurulum:
+
+1. Render Dashboard içinde `New > Blueprint` seç.
+2. `yoxbensoftware/basvuruakis` repository'sini ve `main` branch'ini bağla.
+3. Blueprint sync işlemini başlat.
+
+Notlar:
+
+- Blueprint free plan ile tanımlıdır; Render free servisleri boşta uyuyabilir ve ilk istek yavaş gelebilir.
+- API `ASPNETCORE_ENVIRONMENT=Staging` ile çalışır. Bu, müşteri demosu için sahte OTP/CAPTCHA adapter'larını ve otomatik veritabanı şema oluşturmayı aktif tutar.
+- Production'a geçerken `ASPNETCORE_ENVIRONMENT=Production` yapılmalı, gerçek SMS/CAPTCHA/object storage ayarları eklenmeli ve migration süreci kontrollü yürütülmelidir.
+- Web, API host bilgisini Render'ın `RENDER_EXTERNAL_HOSTNAME` değerinden alır. API CORS origin'i web servisinin `RENDER_EXTERNAL_URL` değerine bağlanır.
+
 ## Production Notları
 
 - Production’da SQLite kullanılmaz; PostgreSQL zorunludur.

@@ -33,7 +33,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     {
         var connectionString = builder.Configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("ConnectionStrings:Postgres is required for PostgreSQL.");
-        options.UseNpgsql(connectionString);
+        options.UseNpgsql(PostgresConnectionStrings.Normalize(connectionString));
     }
     else
     {

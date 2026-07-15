@@ -1,4 +1,6 @@
+using BasvuruAkis.Api;
 using BasvuruAkis.Api.Services;
+using Npgsql;
 
 namespace BasvuruAkis.Api.Tests;
 
@@ -48,6 +50,30 @@ public sealed class DomainSecurityTests
         var actual = sanitizer.SanitizeCell(payload);
 
         Assert.StartsWith("'", actual);
+    }
+
+    [Fact]
+    public void PostgresConnectionStrings_NormalizesRenderDatabaseUrl()
+    {
+        var normalized = PostgresConnectionStrings.Normalize(
+            "postgresql://user%2Dname:p%40ss%3Aword@dpg-test-a:5432/basvuruakis");
+
+        var builder = new NpgsqlConnectionStringBuilder(normalized);
+        Assert.Equal("dpg-test-a", builder.Host);
+        Assert.Equal(5432, builder.Port);
+        Assert.Equal("basvuruakis", builder.Database);
+        Assert.Equal("user-name", builder.Username);
+        Assert.Equal("p@ss:word", builder.Password);
+    }
+
+    [Fact]
+    public void PostgresConnectionStrings_LeavesNpgsqlConnectionStringUnchanged()
+    {
+        const string connectionString = "Host=localhost;Port=5432;Database=basvuruakis;Username=test;Password=secret";
+
+        var normalized = PostgresConnectionStrings.Normalize(connectionString);
+
+        Assert.Equal(connectionString, normalized);
     }
 
     private sealed class StaticKeyProvider : IDataProtectionKeyProvider

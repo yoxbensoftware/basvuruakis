@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Restore .NET
+        run: dotnet restore BasvuruAkis.slnx
+
+      - name: Test API
+        run: dotnet test BasvuruAkis.slnx --no-restore
+
+      - name: Scan NuGet packages
+        run: |
+          dotnet list apps/api/BasvuruAkis.Api.csproj package --vulnerable --include-transitive
+          dotnet list tests/api/BasvuruAkis.Api.Tests.csproj package --vulnerable --include-transitive
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint web
+        run: pnpm --dir apps/web lint
+
+      - name: Typecheck web
+        run: pnpm --dir apps/web typecheck
+
+      - name: Build web
+        run: pnpm --dir apps/web build
+
+      - name: Audit web dependencies
+        run: pnpm audit --audit-level moderate
+
+      - name: Validate Compose
+        env:
+          SECURITY_ENCRYPTION_KEY: ci-compose-config-encryption-key
+          SECURITY_LOOKUP_KEY: ci-compose-config-lookup-key
+          JWT_SIGNING_KEY: ci-compose-config-jwt-key
+        run: docker compose -f infrastructure/docker-compose.yml config

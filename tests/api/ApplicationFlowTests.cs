@@ -145,6 +145,21 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminAuth_LogoutRevokesRefreshToken()
+    {
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var logoutResponse = await _client.PostAsJsonAsync("/api/admin/auth/logout", new RefreshTokenRequest(login.RefreshToken));
+        Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
+
+        var refreshResponse = await _client.PostAsJsonAsync("/api/admin/auth/refresh", new RefreshTokenRequest(login.RefreshToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task AdminPermissions_RestrictDetailExportAndAuditEndpoints()
     {
         var applicationResponse = await CreateVerifiedApplicationAsync("05321112253", "limited-permission@example.test", $"idem-{Guid.NewGuid():N}");

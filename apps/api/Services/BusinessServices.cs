@@ -565,6 +565,13 @@ public sealed class AuthService(
 
         if (user.MfaEnabled && (string.IsNullOrWhiteSpace(request.TotpCode) || !totpService.Verify(user.MfaSecret!, request.TotpCode, now)))
         {
+            user.FailedLoginCount += 1;
+            if (user.FailedLoginCount >= 5)
+            {
+                user.LockoutUntil = now.AddMinutes(15);
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await securityLog.WriteAsync("login.mfa_failed", user.Id, ipAddress, userAgent, new { email }, cancellationToken);
             return ServiceResult<LoginResponse>.Fail("mfa_required", "MFA kodu gerekli veya geçersiz.");
         }
 

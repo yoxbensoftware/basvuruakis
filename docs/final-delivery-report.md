@@ -23,6 +23,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Otomatik temsilcilik atama.
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
 - Production ilk admin bootstrap'i ve MFA zorunluluğu.
+- Admin MFA hatalarında security log ve 5 denemede geçici hesap kilidi.
 - KVKK veri sahibi talebi için gerekçeli başvuru anonimleştirme.
 - Audit/security log temeli ve permission kontrollü okuma endpointleri.
 - CSV/XLSX export sanitization.
@@ -49,7 +50,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 26/26 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 27/27 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

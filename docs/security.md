@@ -6,7 +6,8 @@
 - BCrypt parola hashleme.
 - Production ilk admin bootstrap'i environment secret değerleriyle yapılır ve MFA zorunlu tutulur.
 - Permission bazlı admin endpoint koruması.
-- Başarısız login, CAPTCHA hatası, detay görüntüleme, export ve atama için log altyapısı.
+- Başarısız login, MFA hatası, CAPTCHA hatası, detay görüntüleme, export ve atama için log altyapısı.
+- Admin parola veya MFA başarısızlıkları 5 denemede 15 dakika hesap kilidi uygular.
 - AES-256-GCM alan şifreleme.
 - Ayrı HMAC-SHA-256 lookup hash.
 - OTP hash saklama, 3 dakika süre, 5 deneme, 60 saniye resend cooldown, IP ve cihaz bazlı saatlik rate limit.

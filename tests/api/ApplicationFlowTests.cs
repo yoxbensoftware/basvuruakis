@@ -158,6 +158,42 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminLogin_LocksAccountAfterMfaFailures()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var admin = await db.AdminUsers.SingleAsync(x => x.Email == "admin@basvuruakis.local");
+            admin.MfaEnabled = true;
+            admin.MfaSecret = "JBSWY3DPEHPK3PXP";
+            await db.SaveChangesAsync();
+        }
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var response = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", "000000"));
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var error = await ReadJson<ApiError>(response);
+            Assert.Equal("mfa_required", error.Code);
+        }
+
+        var locked = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", "000000"));
+        Assert.Equal(HttpStatusCode.Unauthorized, locked.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var admin = await db.AdminUsers.AsNoTracking().SingleAsync(x => x.Email == "admin@basvuruakis.local");
+            Assert.Equal(5, admin.FailedLoginCount);
+            Assert.True(admin.LockoutUntil > DateTimeOffset.UtcNow);
+
+            var mfaFailures = await db.SecurityLogs.AsNoTracking()
+                .CountAsync(x => x.EventType == "login.mfa_failed" && x.ActorUserId == admin.Id);
+            Assert.Equal(5, mfaFailures);
+        }
+    }
+
+    [Fact]
     public async Task ApplicationEndpoint_RejectsDuplicateNationalIdOrPhone_WithGenericMessage()
     {
         var first = await CreateVerifiedApplicationAsync("05321112234", "ayse1@example.test", $"idem-{Guid.NewGuid():N}");

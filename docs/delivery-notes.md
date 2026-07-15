@@ -18,6 +18,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - PostgreSQL `AddRelationalConstraints` EF migration dosyası ile uygulama, lokasyon, temsilcilik, admin token, audit/security/export ve başvuru geçmişi ilişkileri foreign key seviyesinde bağlandı.
 - Public başvuru akışı aktif KVKK/açık rıza, lokasyon hiyerarşisi ve aktif default temsilcilik kontrollerini OTP verification token tüketmeden önce yapar.
 - Başvuru referans numarası üretimi servis arkasına alındı; çakışma durumunda güvenli yeniden deneme ve unique constraint yarışları için kontrollü API yanıtı eklendi.
+- Admin MFA başarısız denemeleri parola hatalarıyla aynı kilit politikasına bağlandı ve security log'a yazıldı.
 - Production readiness kontrolü başvuru alabilmek için zorunlu operasyon verileri eksikse 503 dönecek şekilde sıkılaştırıldı.
 - Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
 - Web response security header'ları ve API production HSTS eklendi.
@@ -41,7 +42,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 26/26 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 27/27 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.

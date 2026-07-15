@@ -51,7 +51,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 33/33 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 34/34 test geçti.
 - `pwsh .\infrastructure\security\secret-scan.ps1`: başarılı, tracked dosyalarda secret pattern bulmadı.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.

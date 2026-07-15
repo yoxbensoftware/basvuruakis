@@ -306,6 +306,20 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cors_PreflightAllowsConfiguredOriginOnly()
+    {
+        var allowedResponse = await _client.SendAsync(CreatePreflightRequest("http://localhost:3000"));
+        Assert.Equal(HttpStatusCode.NoContent, allowedResponse.StatusCode);
+        Assert.Equal("http://localhost:3000", allowedResponse.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Equal("true", allowedResponse.Headers.GetValues("Access-Control-Allow-Credentials").Single());
+
+        var blockedResponse = await _client.SendAsync(CreatePreflightRequest("https://evil.example.test"));
+        Assert.Equal(HttpStatusCode.NoContent, blockedResponse.StatusCode);
+        Assert.False(blockedResponse.Headers.Contains("Access-Control-Allow-Origin"));
+        Assert.False(blockedResponse.Headers.Contains("Access-Control-Allow-Credentials"));
+    }
+
+    [Fact]
     public async Task AdminLogin_LocksAccountAfterMfaFailures()
     {
         using (var scope = _factory.Services.CreateScope())
@@ -652,6 +666,14 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
                 .ToList()
         });
         await db.SaveChangesAsync();
+    }
+
+    private static HttpRequestMessage CreatePreflightRequest(string origin)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/otp/request");
+        request.Headers.Add("Origin", origin);
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        return request;
     }
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

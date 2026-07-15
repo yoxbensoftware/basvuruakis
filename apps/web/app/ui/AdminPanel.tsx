@@ -102,6 +102,7 @@ export function AdminPanel() {
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [token, setToken] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [applications, setApplications] = useState<PagedApplications | null>(null);
   const [auditLogs, setAuditLogs] = useState<PagedAuditLogs | null>(null);
@@ -130,6 +131,7 @@ export function AdminPanel() {
         body: JSON.stringify({ email, password, totpCode: totpCode.trim() || null })
       });
       setToken(result.accessToken);
+      setPermissions(result.permissions);
       await loadAdminData(result.accessToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Giriş başarısız.");
@@ -174,6 +176,7 @@ export function AdminPanel() {
     setApplications(null);
     setAuditLogs(null);
     setSecurityLogs(null);
+    setPermissions([]);
     setAnonymizeConfirmed(false);
     setStatus(null);
     setError(null);
@@ -312,30 +315,40 @@ export function AdminPanel() {
   }
 
   return (
-    <div className="form-card">
-      {error && <div className="status error" role="alert">{error}</div>}
-      {status && <div className="status success" role="status">{status}</div>}
+    <div className="admin-panel">
+      {(error || status) && (
+        <div className="message-stack">
+          {error && <div className="status error" role="alert">{error}</div>}
+          {status && <div className="status success" role="status">{status}</div>}
+        </div>
+      )}
+
       {!token && (
-        <form onSubmit={login} className="form-grid">
-          <div className="field">
-            <label htmlFor="admin-email">E-posta</label>
-            <input id="admin-email" value={email} onChange={(event) => setEmail(event.target.value)} />
+        <form onSubmit={login} className="login-panel">
+          <div className="login-copy">
+            <p className="eyebrow">Yönetim oturumu</p>
+            <h2>Başvuru operasyonu</h2>
+            <p className="muted">Liste, detay, manuel atama, KVKK anonimleştirme ve export tek panelde çalışır.</p>
           </div>
-          <div className="field">
-            <label htmlFor="admin-password">Parola</label>
-            <input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="admin-totp">MFA kodu</label>
-            <input
-              id="admin-totp"
-              value={totpCode}
-              onChange={(event) => setTotpCode(event.target.value)}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-            />
-          </div>
-          <div className="field full">
+          <div className="login-fields">
+            <div className="field">
+              <label htmlFor="admin-email">E-posta</label>
+              <input id="admin-email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
+            </div>
+            <div className="field">
+              <label htmlFor="admin-password">Parola</label>
+              <input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
+            </div>
+            <div className="field">
+              <label htmlFor="admin-totp">MFA kodu</label>
+              <input
+                id="admin-totp"
+                value={totpCode}
+                onChange={(event) => setTotpCode(event.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
             <button type="submit" disabled={loading}>Giriş yap</button>
           </div>
         </form>
@@ -343,16 +356,22 @@ export function AdminPanel() {
 
       {token && (
         <>
-          <div className="actions">
-            <button type="button" onClick={refreshAdminData} disabled={loading}>Yenile</button>
-            <button type="button" className="secondary" onClick={downloadCsvExport} disabled={loading}>CSV export indir</button>
-            <button type="button" className="secondary" onClick={logout}>Çıkış</button>
+          <div className="admin-toolbar">
+            <div>
+              <p className="eyebrow">Operasyon konsolu</p>
+              <h2>Başvuru yönetimi</h2>
+            </div>
+            <div className="toolbar-actions">
+              <span className="badge">{permissions.length} permission</span>
+              <button type="button" onClick={refreshAdminData} disabled={loading}>Yenile</button>
+              <button type="button" className="secondary" onClick={downloadCsvExport} disabled={loading}>CSV export</button>
+              <button type="button" className="ghost" onClick={logout}>Çıkış</button>
+            </div>
           </div>
 
           {dashboard && (
-            <section aria-label="Dashboard">
-              <h2>Dashboard</h2>
-              <div className="grid">
+            <section className="dashboard-band" aria-label="Dashboard">
+              <div className="metric-grid">
                 <Metric label="Toplam" value={dashboard.total} />
                 <Metric label="Bugün" value={dashboard.today} />
                 <Metric label="Son 7 gün" value={dashboard.last7Days} />
@@ -360,11 +379,30 @@ export function AdminPanel() {
                 <Metric label="Doğrulanmış" value={dashboard.verified} />
                 <Metric label="Atanamayan" value={dashboard.unassigned} />
               </div>
+              <div className="distribution-panel">
+                <span className="field-label">İl dağılımı</span>
+                {dashboard.byProvince.length === 0 ? (
+                  <p className="muted">Henüz dağılım yok.</p>
+                ) : (
+                  dashboard.byProvince.map((item) => (
+                    <div className="distribution-row" key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.count}</strong>
+                    </div>
+                  ))
+                )}
+              </div>
             </section>
           )}
 
-          <section>
-            <h2>Başvurular</h2>
+          <section className="data-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Başvurular</h2>
+                <p>{applications?.total ?? 0} kayıt içinden son {applications?.items.length ?? 0} başvuru.</p>
+              </div>
+              <span className="badge">Maskeli liste</span>
+            </div>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -385,7 +423,7 @@ export function AdminPanel() {
                       <td>{item.fullNameMasked}</td>
                       <td>{item.nationalIdMasked}</td>
                       <td>{item.phoneMasked}</td>
-                      <td>{item.status}</td>
+                      <td><StatusPill status={item.status} /></td>
                       <td>{new Date(item.createdAt).toLocaleString("tr-TR")}</td>
                       <td>
                         <button type="button" className="secondary" onClick={() => loadDetail(item.id)} disabled={loading}>
@@ -404,69 +442,55 @@ export function AdminPanel() {
             </div>
           </section>
 
-          <section>
-            <h2>Son Denetim Kayıtları</h2>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Aksiyon</th>
-                    <th>Varlık</th>
-                    <th>Aktör</th>
-                    <th>Tarih</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs?.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.action}</td>
-                      <td>{item.entityType}{item.entityId ? ` / ${item.entityId.slice(0, 8)}` : ""}</td>
-                      <td>{item.actorUserId?.slice(0, 8) ?? "-"}</td>
-                      <td>{new Date(item.createdAt).toLocaleString("tr-TR")}</td>
-                    </tr>
-                  ))}
-                  {auditLogs?.items.length === 0 && (
-                    <tr>
-                      <td colSpan={4}>Henüz audit kaydı yok.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <div className="log-grid">
+            <section className="data-panel compact-panel">
+              <div className="panel-heading">
+                <div>
+                  <h2>Denetim</h2>
+                  <p>Son audit olayları.</p>
+                </div>
+              </div>
+              <div className="event-list">
+                {auditLogs?.items.map((item) => (
+                  <div className="event-row" key={item.id}>
+                    <strong>{item.action}</strong>
+                    <span>{item.entityType}{item.entityId ? ` / ${item.entityId.slice(0, 8)}` : ""}</span>
+                    <time>{new Date(item.createdAt).toLocaleString("tr-TR")}</time>
+                  </div>
+                ))}
+                {auditLogs?.items.length === 0 && <p className="muted">Henüz audit kaydı yok.</p>}
+              </div>
+            </section>
 
-          <section>
-            <h2>Son Güvenlik Kayıtları</h2>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Olay</th>
-                    <th>IP</th>
-                    <th>Tarih</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {securityLogs?.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.eventType}</td>
-                      <td>{item.ipAddress}</td>
-                      <td>{new Date(item.createdAt).toLocaleString("tr-TR")}</td>
-                    </tr>
-                  ))}
-                  {securityLogs?.items.length === 0 && (
-                    <tr>
-                      <td colSpan={3}>Henüz security kaydı yok.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+            <section className="data-panel compact-panel">
+              <div className="panel-heading">
+                <div>
+                  <h2>Güvenlik</h2>
+                  <p>Son security olayları.</p>
+                </div>
+              </div>
+              <div className="event-list">
+                {securityLogs?.items.map((item) => (
+                  <div className="event-row" key={item.id}>
+                    <strong>{item.eventType}</strong>
+                    <span>{item.ipAddress}</span>
+                    <time>{new Date(item.createdAt).toLocaleString("tr-TR")}</time>
+                  </div>
+                ))}
+                {securityLogs?.items.length === 0 && <p className="muted">Henüz security kaydı yok.</p>}
+              </div>
+            </section>
+          </div>
 
           {detail && (
             <section className="detail-card" aria-label="Başvuru detayı">
-              <h2>Başvuru Detayı</h2>
+              <div className="panel-heading">
+                <div>
+                  <h2>Başvuru detayı</h2>
+                  <p>{detail.referenceNumber}</p>
+                </div>
+                <StatusPill status={detail.status} />
+              </div>
               <dl className="detail-grid">
                 <DetailItem label="Referans" value={detail.referenceNumber} />
                 <DetailItem label="Ad Soyad" value={`${detail.firstName} ${detail.lastName}`} />
@@ -479,61 +503,71 @@ export function AdminPanel() {
                 <DetailItem label="Adres" value={detail.address} />
               </dl>
 
-              <form className="form-grid compact" onSubmit={assignSelectedApplication}>
-                <div className="field">
-                  <label htmlFor="assignment-office">Temsilcilik</label>
-                  <select
-                    id="assignment-office"
-                    value={assignmentOfficeId}
-                    onChange={(event) => setAssignmentOfficeId(Number(event.target.value))}
-                  >
-                    <option value={1}>Genel Merkez</option>
-                    <option value={2}>Kadıköy Temsilciliği</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="assignment-reason">Gerekçe</label>
-                  <input
-                    id="assignment-reason"
-                    value={assignmentReason}
-                    onChange={(event) => setAssignmentReason(event.target.value)}
-                    required
-                  />
-                </div>
-                <div className="field full">
-                  <button type="submit" disabled={loading || assignmentReason.trim().length < 3}>
-                    Manuel yönlendir
-                  </button>
-                </div>
-              </form>
-
-              <form className="form-grid compact" onSubmit={anonymizeSelectedApplication}>
-                <div className="field full">
-                  <label htmlFor="anonymize-reason">Anonimleştirme gerekçesi</label>
-                  <input
-                    id="anonymize-reason"
-                    value={anonymizeReason}
-                    onChange={(event) => setAnonymizeReason(event.target.value)}
-                    required
-                  />
-                </div>
-                <div className="field full">
-                  <label className="checkline">
+              <div className="action-forms">
+                <form className="form-grid compact" onSubmit={assignSelectedApplication}>
+                  <div className="section-heading full">
+                    <h3>Manuel yönlendirme</h3>
+                    <p>Başvuruyu başka temsilciliğe gerekçeli olarak aktarır.</p>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="assignment-office">Temsilcilik</label>
+                    <select
+                      id="assignment-office"
+                      value={assignmentOfficeId}
+                      onChange={(event) => setAssignmentOfficeId(Number(event.target.value))}
+                    >
+                      <option value={1}>Genel Merkez</option>
+                      <option value={2}>Kadıköy Temsilciliği</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="assignment-reason">Gerekçe</label>
                     <input
-                      type="checkbox"
-                      checked={anonymizeConfirmed}
-                      onChange={(event) => setAnonymizeConfirmed(event.target.checked)}
-                      disabled={loading || detail.status === "Anonymized"}
+                      id="assignment-reason"
+                      value={assignmentReason}
+                      onChange={(event) => setAssignmentReason(event.target.value)}
+                      required
                     />
-                    <span>Geri alınamaz anonimleştirme işlemini onaylıyorum.</span>
-                  </label>
-                </div>
-                <div className="field full">
-                  <button type="submit" className="secondary" disabled={loading || detail.status === "Anonymized" || anonymizeReason.trim().length < 5 || !anonymizeConfirmed}>
-                    KVKK anonimleştir
-                  </button>
-                </div>
-              </form>
+                  </div>
+                  <div className="field full">
+                    <button type="submit" disabled={loading || assignmentReason.trim().length < 3}>
+                      Manuel yönlendir
+                    </button>
+                  </div>
+                </form>
+
+                <form className="form-grid compact danger-zone" onSubmit={anonymizeSelectedApplication}>
+                  <div className="section-heading full">
+                    <h3>KVKK anonimleştirme</h3>
+                    <p>Geri alınamaz işlem için gerekçe ve açık onay gerekir.</p>
+                  </div>
+                  <div className="field full">
+                    <label htmlFor="anonymize-reason">Anonimleştirme gerekçesi</label>
+                    <input
+                      id="anonymize-reason"
+                      value={anonymizeReason}
+                      onChange={(event) => setAnonymizeReason(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="field full">
+                    <label className="checkline">
+                      <input
+                        type="checkbox"
+                        checked={anonymizeConfirmed}
+                        onChange={(event) => setAnonymizeConfirmed(event.target.checked)}
+                        disabled={loading || detail.status === "Anonymized"}
+                      />
+                      <span>Geri alınamaz anonimleştirme işlemini onaylıyorum.</span>
+                    </label>
+                  </div>
+                  <div className="field full">
+                    <button type="submit" className="secondary danger-action" disabled={loading || detail.status === "Anonymized" || anonymizeReason.trim().length < 5 || !anonymizeConfirmed}>
+                      KVKK anonimleştir
+                    </button>
+                  </div>
+                </form>
+              </div>
             </section>
           )}
         </>
@@ -571,5 +605,13 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span className={`status-pill status-${status.toLowerCase()}`}>
+      {status}
+    </span>
   );
 }

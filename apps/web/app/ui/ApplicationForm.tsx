@@ -254,82 +254,140 @@ export function ApplicationForm() {
     return deviceIdRef.current;
   }
 
-  return (
-    <form className="form-card" onSubmit={submitApplication}>
-      {error && <div className="status error" role="alert">{error}</div>}
-      {legalTextError && <div className="status error" role="alert">{legalTextError}</div>}
-      {status && <div className="status success" role="status">{status}</div>}
-      {devCode && <div className="status">Demo OTP kodu: <strong>{devCode}</strong></div>}
+  const activeLegalTexts = legalTexts.filter((text) => text.type === "PrivacyNotice" || text.type === "ExplicitConsent");
+  const canSubmit = !loading && Boolean(verificationToken) && form.privacyNoticeAccepted && form.explicitConsentAccepted;
 
-      <div className="form-grid">
-        <TextField label="Ad" value={form.firstName} onChange={(value) => setForm({ ...form, firstName: value })} />
-        <TextField label="Soyad" value={form.lastName} onChange={(value) => setForm({ ...form, lastName: value })} />
-        <TextField label="TCKN" value={form.nationalId} onChange={(value) => setForm({ ...form, nationalId: value })} inputMode="numeric" />
-        <TextField label="Telefon" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} inputMode="tel" />
-        <TextField label="E-posta" value={form.email} onChange={(value) => setForm({ ...form, email: value })} inputMode="email" />
-        <TextField label="Posta kodu" value={form.postalCode} onChange={(value) => setForm({ ...form, postalCode: value })} inputMode="numeric" required={false} />
-        {turnstileEnabled && (
-          <div className="field full captcha-field">
-            <label>CAPTCHA doğrulaması</label>
-            {turnstileSiteKey ? (
-              <div ref={turnstileContainerRef} />
-            ) : (
-              <p className="muted">CAPTCHA yapılandırması eksik.</p>
-            )}
+  return (
+    <form className="form-card intake-form" onSubmit={submitApplication}>
+      <div className="form-card-header">
+        <div>
+          <p className="eyebrow">Güvenli başvuru akışı</p>
+          <h2>Başvuru bilgileri</h2>
+        </div>
+        <span className={verificationToken ? "badge success" : "badge"}>{verificationToken ? "Telefon doğrulandı" : "Doğrulama bekliyor"}</span>
+      </div>
+
+      {(error || legalTextError || status || devCode) && (
+        <div className="message-stack">
+          {error && <div className="status error" role="alert">{error}</div>}
+          {legalTextError && <div className="status error" role="alert">{legalTextError}</div>}
+          {status && <div className="status success" role="status">{status}</div>}
+          {devCode && <div className="status neutral">Demo OTP kodu: <strong>{devCode}</strong></div>}
+        </div>
+      )}
+
+      <div className="step-grid">
+        <div className="step done"><strong>1</strong><span>Kimlik</span></div>
+        <div className={verificationToken ? "step done" : "step active"}><strong>2</strong><span>Telefon</span></div>
+        <div className="step"><strong>3</strong><span>Adres</span></div>
+        <div className={canSubmit ? "step done" : "step"}><strong>4</strong><span>Onay</span></div>
+      </div>
+
+      <section className="form-section" aria-labelledby="identity-section">
+        <div className="section-heading">
+          <h3 id="identity-section">Kimlik ve iletişim</h3>
+          <p>Başvuru sahibinin doğrulanabilir temel bilgileri.</p>
+        </div>
+        <div className="form-grid">
+          <TextField label="Ad" value={form.firstName} onChange={(value) => setForm({ ...form, firstName: value })} />
+          <TextField label="Soyad" value={form.lastName} onChange={(value) => setForm({ ...form, lastName: value })} />
+          <TextField label="TCKN" value={form.nationalId} onChange={(value) => setForm({ ...form, nationalId: value })} inputMode="numeric" />
+          <TextField label="Telefon" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} inputMode="tel" />
+          <TextField label="E-posta" value={form.email} onChange={(value) => setForm({ ...form, email: value })} inputMode="email" />
+          <TextField label="Posta kodu" value={form.postalCode} onChange={(value) => setForm({ ...form, postalCode: value })} inputMode="numeric" required={false} />
+        </div>
+      </section>
+
+      <section className="form-section verification-panel" aria-labelledby="verification-section">
+        <div className="section-heading">
+          <h3 id="verification-section">Telefon doğrulama</h3>
+          <p>OTP doğrulaması tamamlanmadan başvuru gönderilmez.</p>
+        </div>
+        <div className="form-grid">
+          {turnstileEnabled && (
+            <div className="field full captcha-field">
+              <label>CAPTCHA doğrulaması</label>
+              {turnstileSiteKey ? (
+                <div ref={turnstileContainerRef} />
+              ) : (
+                <p className="muted">CAPTCHA yapılandırması eksik.</p>
+              )}
+            </div>
+          )}
+          <div className="field otp-field">
+            <label htmlFor="otp">OTP kodu</label>
+            <input id="otp" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" />
           </div>
-        )}
-        <div className="field">
-          <label htmlFor="otp">OTP kodu</label>
-          <input id="otp" value={otpCode} onChange={(event) => setOtpCode(event.target.value)} inputMode="numeric" />
-          <div className="actions">
-            <button type="button" className="secondary" onClick={requestOtp} disabled={loading || !form.phone || (turnstileEnabled && (!turnstileSiteKey || !captchaToken))}>OTP iste</button>
-            <button type="button" className="secondary" onClick={verifyOtp} disabled={loading || !otpCode}>OTP doğrula</button>
+          <div className="field otp-actions">
+            <span className="field-label">İşlem</span>
+            <div className="button-row">
+              <button type="button" className="secondary" onClick={requestOtp} disabled={loading || !form.phone || (turnstileEnabled && (!turnstileSiteKey || !captchaToken))}>OTP iste</button>
+              <button type="button" className="secondary" onClick={verifyOtp} disabled={loading || !otpCode}>OTP doğrula</button>
+            </div>
           </div>
         </div>
-        <div className="field">
-          <label htmlFor="location">Lokasyon</label>
-          <select id="location" value="340101" disabled>
-            <option value="340101">İstanbul / Kadıköy / Caferağa</option>
-          </select>
+      </section>
+
+      <section className="form-section" aria-labelledby="address-section">
+        <div className="section-heading">
+          <h3 id="address-section">Adres ve lokasyon</h3>
+          <p>Demo veri setinde Kadıköy / Caferağa lokasyonu kullanılır.</p>
         </div>
-        <div className="field full">
-          <label htmlFor="address">Açık adres</label>
-          <textarea id="address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} rows={4} required />
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="location">Lokasyon</label>
+            <select id="location" value="340101" disabled>
+              <option value="340101">İstanbul / Kadıköy / Caferağa</option>
+            </select>
+          </div>
+          <div className="field full">
+            <label htmlFor="address">Açık adres</label>
+            <textarea id="address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} rows={4} required />
+          </div>
         </div>
-        <div className="field full legal-texts">
-          <label>KVKK ve Onay Metinleri</label>
+      </section>
+
+      <section className="form-section" aria-labelledby="consent-section">
+        <div className="section-heading">
+          <h3 id="consent-section">KVKK onayları</h3>
+          <p>Aktif metin sürümleri başvuru kaydına bağlanır.</p>
+        </div>
+        <div className="legal-texts">
+          <label>KVKK ve onay metinleri</label>
           {legalTexts.length === 0 && !legalTextError && <p className="muted">Metinler yükleniyor...</p>}
-          {legalTexts
-            .filter((text) => text.type === "PrivacyNotice" || text.type === "ExplicitConsent")
-            .map((text) => (
-              <details key={text.id}>
-                <summary>{text.title} - v{text.version}</summary>
-                <p>{text.body}</p>
-              </details>
-            ))}
+          {activeLegalTexts.map((text) => (
+            <details key={text.id}>
+              <summary>{text.title} - v{text.version}</summary>
+              <p>{text.body}</p>
+            </details>
+          ))}
         </div>
-        <label className="field full">
-          <span>
+        <div className="consent-list">
+          <label className="checkline">
             <input
               type="checkbox"
               checked={form.privacyNoticeAccepted}
               onChange={(event) => setForm({ ...form, privacyNoticeAccepted: event.target.checked })}
-            /> KVKK aydınlatma metnini okudum.
-          </span>
-        </label>
-        <label className="field full">
-          <span>
+            />
+            <span>KVKK aydınlatma metnini okudum.</span>
+          </label>
+          <label className="checkline">
             <input
               type="checkbox"
               checked={form.explicitConsentAccepted}
               onChange={(event) => setForm({ ...form, explicitConsentAccepted: event.target.checked })}
-            /> Açık rıza metnini onaylıyorum.
-          </span>
-        </label>
-      </div>
+            />
+            <span>Açık rıza metnini onaylıyorum.</span>
+          </label>
+        </div>
+      </section>
 
-      <div className="actions">
-        <button type="submit" disabled={loading}>Başvuruyu gönder</button>
+      <div className="submit-bar">
+        <div>
+          <strong>{verificationToken ? "Gönderime hazır" : "Telefon doğrulaması bekleniyor"}</strong>
+          <span>Başvuru gönderildiğinde referans numarası üretilecek.</span>
+        </div>
+        <button type="submit" disabled={!canSubmit}>Başvuruyu gönder</button>
       </div>
     </form>
   );

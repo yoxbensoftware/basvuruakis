@@ -151,24 +151,7 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, applicationResponse.StatusCode);
         var application = await ReadJson<ApplicationCreatedResponse>(applicationResponse);
 
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var adminId = Guid.NewGuid();
-            db.AdminUsers.Add(new AdminUser
-            {
-                Id = adminId,
-                Email = "limited@basvuruakis.local",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Limited!12345"),
-                MfaEnabled = false,
-                CreatedAt = DateTimeOffset.UtcNow,
-                Permissions =
-                [
-                    new AdminUserPermission { AdminUserId = adminId, Permission = Permissions.ApplicationsRead }
-                ]
-            });
-            await db.SaveChangesAsync();
-        }
+        await AddAdminAsync("limited@basvuruakis.local", "Limited!12345", Permissions.ApplicationsRead);
 
         var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("limited@basvuruakis.local", "Limited!12345", null));
         loginResponse.EnsureSuccessStatusCode();
@@ -189,6 +172,30 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
 
         var securityResponse = await _client.GetAsync("/api/admin/security-logs?page=1&pageSize=10");
         Assert.Equal(HttpStatusCode.Forbidden, securityResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminPermissions_RestrictDashboardAssignmentAndAnonymizeEndpoints()
+    {
+        var applicationResponse = await CreateVerifiedApplicationAsync("05321112254", "limited-ops@example.test", $"idem-{Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.Created, applicationResponse.StatusCode);
+        var application = await ReadJson<ApplicationCreatedResponse>(applicationResponse);
+
+        await AddAdminAsync("limited-ops@basvuruakis.local", "Limited!12345", Permissions.ApplicationsRead);
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("limited-ops@basvuruakis.local", "Limited!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var dashboardResponse = await _client.GetAsync("/api/admin/dashboard");
+        Assert.Equal(HttpStatusCode.Forbidden, dashboardResponse.StatusCode);
+
+        var assignmentResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{application.Id}/assignment", new ManualAssignmentRequest(1, "Yetkisiz deneme"));
+        Assert.Equal(HttpStatusCode.Forbidden, assignmentResponse.StatusCode);
+
+        var anonymizeResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{application.Id}/anonymize", new AnonymizeApplicationRequest("Yetkisiz deneme", true));
+        Assert.Equal(HttpStatusCode.Forbidden, anonymizeResponse.StatusCode);
     }
 
     [Fact]
@@ -611,6 +618,25 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
             true,
             verification.VerificationToken,
             idempotencyKey));
+    }
+
+    private async Task AddAdminAsync(string email, string password, params string[] permissions)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var adminId = Guid.NewGuid();
+        db.AdminUsers.Add(new AdminUser
+        {
+            Id = adminId,
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            MfaEnabled = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            Permissions = permissions
+                .Select(permission => new AdminUserPermission { AdminUserId = adminId, Permission = permission })
+                .ToList()
+        });
+        await db.SaveChangesAsync();
     }
 
     private static async Task<T> ReadJson<T>(HttpResponseMessage response)

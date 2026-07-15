@@ -2,7 +2,7 @@
 
 ## Karar
 
-Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Production yayına hazır kararı için dış servis konfigürasyonları, migration stratejisi, staging load test, WAF/TLS ve hukuk onayları tamamlanmalıdır.
+Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Production yayına hazır kararı için dış servis konfigürasyonları, migration job uygulaması, staging load test, WAF/TLS ve hukuk onayları tamamlanmalıdır.
 
 ## Tamamlananlar
 
@@ -10,6 +10,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - ASP.NET Core API.
 - Next.js TypeScript web.
 - PostgreSQL/Redis/MinIO/Nginx Compose dosyaları.
+- PostgreSQL `InitialCreate` EF migration ve local `dotnet-ef` tool manifest.
 - Health/readiness/liveness endpointleri.
 - OTP/CAPTCHA adapter altyapısı, Turnstile web token akışı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
 - Production HTTP JSON SMS adapter ve provider stub engeli.
@@ -54,6 +55,8 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `docker compose -f .\infrastructure\docker-compose.yml config`: örnek secret env değerleriyle başarılı.
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
+- `dotnet tool restore`: başarılı.
+- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde migration apply başarılı.
 
 Render ek doğrulaması:
 

@@ -24,6 +24,7 @@ API:
 dotnet build .\BasvuruAkis.slnx
 dotnet test .\BasvuruAkis.slnx
 dotnet run --project .\apps\api\BasvuruAkis.Api.csproj
+dotnet tool restore
 ```
 
 Web:

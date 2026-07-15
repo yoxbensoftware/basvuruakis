@@ -3,7 +3,7 @@
 ## Health
 
 - `/health/live`: process ayakta mı.
-- `/health/ready`: veritabanı erişilebilir mi.
+- `/health/ready`: veritabanı erişilebilir mi. Production ortamında aktif KVKK/açık rıza metni, lokasyon referans verisi ve aktif default temsilcilik eksikse 503 döner.
 
 ## İzlenecek Metrikler
 

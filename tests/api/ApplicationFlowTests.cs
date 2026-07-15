@@ -166,6 +166,48 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ApplicationEndpoint_RejectsInvalidLocationWithoutConsumingVerificationToken()
+    {
+        const string phone = "05321112250";
+        var otpRequest = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto(phone, "ok", "test-device"));
+        otpRequest.EnsureSuccessStatusCode();
+        var otp = await ReadJson<OtpRequestResponse>(otpRequest);
+
+        var otpVerify = await _client.PostAsJsonAsync("/api/otp/verify", new OtpVerifyDto(phone, otp.DevelopmentCode!, "test-device"));
+        otpVerify.EnsureSuccessStatusCode();
+        var verification = await ReadJson<OtpVerifyResponse>(otpVerify);
+
+        var invalidLocation = new CreateApplicationRequest(
+            "Ayşe",
+            "Yılmaz",
+            "10000000146",
+            phone,
+            "invalid-location@example.test",
+            34,
+            3401,
+            999999,
+            "Caferağa Mahallesi Test Sokak No:1",
+            null,
+            true,
+            true,
+            verification.VerificationToken,
+            $"idem-{Guid.NewGuid():N}");
+
+        var rejected = await _client.PostAsJsonAsync("/api/applications", invalidLocation);
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        var error = await ReadJson<ApiError>(rejected);
+        Assert.Equal("location_not_found", error.Code);
+
+        var validLocation = invalidLocation with
+        {
+            NeighborhoodId = 340101,
+            IdempotencyKey = $"idem-{Guid.NewGuid():N}"
+        };
+        var accepted = await _client.PostAsJsonAsync("/api/applications", validLocation);
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+    }
+
+    [Fact]
     public async Task AnonymizeEndpoint_RemovesPersonalData_AndAllowsFreshApplication()
     {
         var firstResponse = await CreateVerifiedApplicationAsync("05321112260", "anon1@example.test", $"idem-{Guid.NewGuid():N}");

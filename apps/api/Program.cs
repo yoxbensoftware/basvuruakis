@@ -114,10 +114,20 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
-app.MapGet("/health/ready", async (AppDbContext db) =>
+app.MapGet("/health/ready", async (AppDbContext db, IWebHostEnvironment environment, CancellationToken cancellationToken) =>
 {
-    var canConnect = await db.Database.CanConnectAsync();
-    return canConnect ? Results.Ok(new { status = "ready" }) : Results.Problem("Database is not reachable", statusCode: 503);
+    var canConnect = await db.Database.CanConnectAsync(cancellationToken);
+    if (!canConnect)
+    {
+        return Results.Problem("Database is not reachable", statusCode: 503);
+    }
+
+    if (environment.IsProduction() && !await OperationalDataReadyAsync(db, cancellationToken))
+    {
+        return Results.Problem("Required operational data is missing", statusCode: 503);
+    }
+
+    return Results.Ok(new { status = "ready" });
 });
 
 var publicApi = app.MapGroup("/api");
@@ -208,18 +218,28 @@ publicApi.MapPost("/applications", async Task<Results<Created<ApplicationCreated
         return TypedResults.Conflict(new ApiError("duplicate_application", "Başvuru alınamadı. Bilgileri kontrol edip daha sonra tekrar deneyin."));
     }
 
-    var tokenConsumed = await otpService.ConsumeVerificationTokenAsync(normalizedPhone, request.VerificationToken, cancellationToken);
-    if (!tokenConsumed)
-    {
-        return TypedResults.BadRequest(new ApiError("phone_not_verified", "Telefon doğrulaması tamamlanmadan başvuru oluşturulamaz."));
-    }
-
     var legalTexts = await db.LegalTexts.Where(x => x.IsActive).ToListAsync(cancellationToken);
     var privacy = legalTexts.FirstOrDefault(x => x.Type == LegalTextType.PrivacyNotice);
     var consent = legalTexts.FirstOrDefault(x => x.Type == LegalTextType.ExplicitConsent);
     if (privacy is null || consent is null)
     {
         return TypedResults.BadRequest(new ApiError("legal_text_missing", "Aktif KVKK metinleri tanımlı değil."));
+    }
+
+    if (!await LocationExistsAsync(db, request.ProvinceId, request.DistrictId, request.NeighborhoodId, cancellationToken))
+    {
+        return TypedResults.BadRequest(new ApiError("location_not_found", "Seçilen il, ilçe veya mahalle geçerli değil."));
+    }
+
+    if (!await db.RepresentativeOffices.AnyAsync(x => x.IsDefault && x.IsActive, cancellationToken))
+    {
+        return TypedResults.BadRequest(new ApiError("assignment_not_configured", "Başvuru yönlendirme yapılandırması eksik."));
+    }
+
+    var tokenConsumed = await otpService.ConsumeVerificationTokenAsync(normalizedPhone, request.VerificationToken, cancellationToken);
+    if (!tokenConsumed)
+    {
+        return TypedResults.BadRequest(new ApiError("phone_not_verified", "Telefon doğrulaması tamamlanmadan başvuru oluşturulamaz."));
     }
 
     await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -595,6 +615,40 @@ static ApiError? ValidateApplicationRequest(CreateApplicationRequest request, IT
     }
 
     return null;
+}
+
+static async Task<bool> LocationExistsAsync(AppDbContext db, int provinceId, int districtId, int neighborhoodId, CancellationToken cancellationToken) =>
+    await db.Neighborhoods.AsNoTracking()
+        .AnyAsync(neighborhood =>
+            neighborhood.Id == neighborhoodId &&
+            neighborhood.DistrictId == districtId &&
+            db.Districts.Any(district => district.Id == districtId && district.ProvinceId == provinceId),
+            cancellationToken);
+
+static async Task<bool> OperationalDataReadyAsync(AppDbContext db, CancellationToken cancellationToken)
+{
+    var hasPrivacyNotice = await db.LegalTexts.AsNoTracking()
+        .AnyAsync(text => text.IsActive && text.Type == LegalTextType.PrivacyNotice, cancellationToken);
+    if (!hasPrivacyNotice)
+    {
+        return false;
+    }
+
+    var hasExplicitConsent = await db.LegalTexts.AsNoTracking()
+        .AnyAsync(text => text.IsActive && text.Type == LegalTextType.ExplicitConsent, cancellationToken);
+    if (!hasExplicitConsent)
+    {
+        return false;
+    }
+
+    var hasDefaultOffice = await db.RepresentativeOffices.AsNoTracking()
+        .AnyAsync(office => office.IsDefault && office.IsActive, cancellationToken);
+    if (!hasDefaultOffice)
+    {
+        return false;
+    }
+
+    return await db.Neighborhoods.AsNoTracking().AnyAsync(cancellationToken);
 }
 
 app.Run();

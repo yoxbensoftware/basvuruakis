@@ -10,12 +10,14 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - ASP.NET Core API.
 - Next.js TypeScript web.
 - PostgreSQL/Redis/MinIO/Nginx Compose dosyaları.
-- PostgreSQL `InitialCreate` EF migration ve local `dotnet-ef` tool manifest.
+- PostgreSQL `InitialCreate` ve `AddRelationalConstraints` EF migration dosyaları ile local `dotnet-ef` tool manifest.
 - Checksum/metadata üreten backup scripti ve `-Force` korumalı restore scripti.
 - Health/readiness/liveness endpointleri.
+- Production readiness içinde aktif KVKK/açık rıza, lokasyon referans verisi ve aktif default temsilcilik kontrolü.
 - OTP/CAPTCHA adapter altyapısı, Turnstile web token akışı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
 - Production HTTP JSON SMS adapter ve provider stub engeli.
 - Başvuru oluşturma, idempotency, TCKN kontrolü, alan şifreleme, HMAC lookup hash.
+- Başvuru oluşturmada OTP token tüketilmeden önce aktif legal text, geçerli lokasyon hiyerarşisi ve aktif default temsilcilik kontrolü.
 - KVKK onay kayıtları.
 - Otomatik temsilcilik atama.
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
@@ -38,6 +40,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - TLS sertifikası, production domain ve edge yönlendirme.
 - Production PostgreSQL scheduled backup/WAL/PITR hedefi ve alarm kurulumu.
 - İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
+- Aktif KVKK/açık rıza metinleri, lokasyon referans verisi ve aktif default temsilcilik seed/import süreci.
 - KVKK metinlerinin hukuk onayı.
 - Staging yük testi ve güvenlik scanleri.
 
@@ -45,7 +48,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 
 15 Temmuz 2026 kalite kapısı:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 24/24 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 25/25 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -57,7 +60,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
-- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde migration apply başarılı.
+- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde `InitialCreate` ve `AddRelationalConstraints` migration apply başarılı.
 - `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 

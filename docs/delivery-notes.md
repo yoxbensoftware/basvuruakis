@@ -15,6 +15,9 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Public başvuru formu Turnstile token akışını destekler; production-like Compose `NEXT_PUBLIC_CAPTCHA_PROVIDER=turnstile` ve site key olmadan build edilmez.
 - Production SMS gönderimi `http-json` adapter ile gerçek HTTPS endpoint çağrısı yapar; log-only/stub provider production’da kabul edilmez.
 - PostgreSQL `InitialCreate` EF migration dosyası üretildi; production DB şeması uygulama startup'ından ayrı migration job ile kurulacak şekilde dokümante edildi.
+- PostgreSQL `AddRelationalConstraints` EF migration dosyası ile uygulama, lokasyon, temsilcilik, admin token, audit/security/export ve başvuru geçmişi ilişkileri foreign key seviyesinde bağlandı.
+- Public başvuru akışı aktif KVKK/açık rıza, lokasyon hiyerarşisi ve aktif default temsilcilik kontrollerini OTP verification token tüketmeden önce yapar.
+- Production readiness kontrolü başvuru alabilmek için zorunlu operasyon verileri eksikse 503 dönecek şekilde sıkılaştırıldı.
 - Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
 - Web response security header'ları ve API production HSTS eklendi.
 
@@ -31,12 +34,13 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Production image digest pinleme ve container scan.
 - Tam staging yük testi.
 - İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
+- Aktif KVKK/açık rıza metinleri, lokasyon referans verisi ve aktif default temsilcilik production migration/seed sürecinde yüklenmelidir.
 
 ## Doğrulama Günlüğü
 
 15 Temmuz 2026 doğrulama sonuçları:
 
-- `dotnet test .\BasvuruAkis.slnx`: başarılı, 24/24 test geçti.
+- `dotnet test .\BasvuruAkis.slnx`: başarılı, 25/25 test geçti.
 - `pnpm --dir .\apps\web lint`: başarılı.
 - `pnpm --dir .\apps\web typecheck`: başarılı.
 - `pnpm --dir .\apps\web build`: başarılı.
@@ -47,7 +51,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - `docker build -f .\apps\api\Dockerfile -t basvuruakis-api:verify .`: başarılı.
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
-- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde başarılı.
+- `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde başarılı; `InitialCreate` ve `AddRelationalConstraints` uygulandı.
 - `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
 - `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 - `render.yaml` resmi Render schema ile doğrulandı.

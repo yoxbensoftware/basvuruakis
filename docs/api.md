@@ -5,7 +5,7 @@ OpenAPI endpoint’i development ortamında `/openapi/v1.json` üzerinden yayın
 ## Public
 
 - `GET /health/live`: process sağlık kontrolü.
-- `GET /health/ready`: veritabanı erişilebilirlik kontrolü.
+- `GET /health/ready`: veritabanı erişilebilirlik kontrolü. Production ortamında aktif KVKK/açık rıza metni, lokasyon referans verisi ve aktif default temsilcilik yoksa 503 döner.
 - `GET /api/content/pages/{slug}`: yayınlanmış içerik sayfası.
 - `GET /api/legal-texts/active`: aktif KVKK/açık rıza/çerez metinleri.
 - `POST /api/otp/request`: CAPTCHA sonrası OTP üretir.

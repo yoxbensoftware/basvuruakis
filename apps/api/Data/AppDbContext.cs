@@ -45,17 +45,49 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.Property(x => x.TokenHash).HasMaxLength(128);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.AdminUserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Province>().HasIndex(x => x.Name).IsUnique();
-        modelBuilder.Entity<District>().HasIndex(x => new { x.ProvinceId, x.Name }).IsUnique();
-        modelBuilder.Entity<Neighborhood>().HasIndex(x => new { x.DistrictId, x.Name }).IsUnique();
+        modelBuilder.Entity<Province>(entity =>
+        {
+            entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasOne<Region>()
+                .WithMany()
+                .HasForeignKey(x => x.RegionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<District>(entity =>
+        {
+            entity.HasIndex(x => new { x.ProvinceId, x.Name }).IsUnique();
+            entity.HasOne<Province>()
+                .WithMany()
+                .HasForeignKey(x => x.ProvinceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Neighborhood>(entity =>
+        {
+            entity.HasIndex(x => new { x.DistrictId, x.Name }).IsUnique();
+            entity.HasOne<District>()
+                .WithMany()
+                .HasForeignKey(x => x.DistrictId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<RepresentativeOffice>().HasIndex(x => x.Name).IsUnique();
 
         modelBuilder.Entity<AssignmentRule>(entity =>
         {
             entity.HasIndex(x => new { x.Scope, x.ScopeId, x.Priority, x.IsActive });
             entity.Property(x => x.Scope).HasConversion<string>().HasMaxLength(32);
+            entity.HasOne<RepresentativeOffice>()
+                .WithMany()
+                .HasForeignKey(x => x.RepresentativeOfficeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ContentPage>(entity =>
@@ -90,35 +122,91 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => x.EmailHash);
             entity.HasIndex(x => new { x.ProvinceId, x.DistrictId, x.NeighborhoodId, x.CreatedAt });
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            entity.HasOne<Province>()
+                .WithMany()
+                .HasForeignKey(x => x.ProvinceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<District>()
+                .WithMany()
+                .HasForeignKey(x => x.DistrictId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Neighborhood>()
+                .WithMany()
+                .HasForeignKey(x => x.NeighborhoodId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApplicationConsent>(entity =>
+        {
+            entity.HasOne<ApplicationRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ApplicationAssignment>(entity =>
         {
             entity.HasIndex(x => new { x.ApplicationId, x.CreatedAt });
+            entity.HasOne<ApplicationRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<RepresentativeOffice>()
+                .WithMany()
+                .HasForeignKey(x => x.RepresentativeOfficeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AssignmentRule>()
+                .WithMany()
+                .HasForeignKey(x => x.AssignmentRuleId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ApplicationStatusHistory>(entity =>
         {
             entity.Property(x => x.FromStatus).HasConversion<string>().HasMaxLength(32);
             entity.Property(x => x.ToStatus).HasConversion<string>().HasMaxLength(32);
+            entity.HasOne<ApplicationRecord>()
+                .WithMany()
+                .HasForeignKey(x => x.ApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>
         {
             entity.HasIndex(x => new { x.Action, x.CreatedAt });
             entity.Property(x => x.Action).HasMaxLength(128);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SecurityLog>(entity =>
         {
             entity.HasIndex(x => new { x.EventType, x.CreatedAt });
             entity.Property(x => x.EventType).HasMaxLength(128);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ExportLog>(entity =>
         {
             entity.Property(x => x.Format).HasConversion<string>().HasMaxLength(16);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+            entity.HasOne<AdminUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ActorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         var dateTimeOffsetConverter = new ValueConverter<DateTimeOffset, long>(

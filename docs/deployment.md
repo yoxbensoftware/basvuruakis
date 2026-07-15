@@ -54,7 +54,7 @@ Notlar:
 
 - Blueprint free plan ile tanımlıdır; Render free servisleri boşta uyuyabilir ve ilk istek yavaş gelebilir.
 - API `ASPNETCORE_ENVIRONMENT=Staging` ile çalışır. Bu, müşteri demosu için sahte OTP/CAPTCHA adapter'larını ve otomatik veritabanı şema oluşturmayı aktif tutar.
-- Production'a geçerken gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret` ve kontrollü migration job uygulanmalıdır.
+- Production'a geçerken gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret`, aktif KVKK/açık rıza metinleri, lokasyon referans verisi, aktif default temsilcilik ve kontrollü migration job uygulanmalıdır.
 - Web, API host bilgisini Render'ın `RENDER_EXTERNAL_HOSTNAME` değerinden alır. API CORS origin'i web servisinin `RENDER_EXTERNAL_URL` değerine bağlanır.
 - Render Blueprint staging ortamında `NEXT_PUBLIC_CAPTCHA_PROVIDER=development` kullanır; production web build'de `turnstile` ve `NEXT_PUBLIC_TURNSTILE_SITE_KEY` verilmelidir.
 
@@ -86,6 +86,7 @@ Production uygulamadan önce backup alınmalı, script review edilmeli ve rollba
 
 - Production’da SQLite kullanılmaz; PostgreSQL zorunludur.
 - Migration deployment pipeline içinde API deploy'undan ayrı job olarak kontrollü çalıştırılmalıdır.
+- `/health/ready`, production ortamında veritabanına ek olarak başvuru alabilmek için zorunlu operasyon verilerini de kontrol eder: aktif KVKK metni, aktif açık rıza metni, en az bir mahalle ve aktif default temsilcilik.
 - Production SMS için `Sms__Provider=http-json`, HTTPS `Sms__Endpoint`, `Sms__ApiKey`, `Sms__Sender` ve `{code}` içeren `Sms__MessageTemplate` gerekir.
 - Compose dosyası production-like local/staging smoke için uygundur. Yüksek trafik production’da managed PostgreSQL, managed Redis, object storage ve edge WAF tercih edilmelidir.
 - Backup job, `backup-postgres.ps1` çıktısını checksum ve metadata dosyalarıyla birlikte bağımsız S3 uyumlu hedefe taşımalı; restore smoke release öncesi doğrulanmalıdır.

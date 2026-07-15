@@ -214,6 +214,42 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminDashboard_ReturnsApplicationMetrics()
+    {
+        var firstResponse = await CreateVerifiedApplicationAsync(
+            "05321112255",
+            "dashboard1@example.test",
+            $"idem-{Guid.NewGuid():N}",
+            nationalId: "10000000214");
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+
+        var secondResponse = await CreateVerifiedApplicationAsync(
+            "05321112256",
+            "dashboard2@example.test",
+            $"idem-{Guid.NewGuid():N}",
+            nationalId: "10000000382");
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+
+        var dashboardResponse = await _client.GetAsync("/api/admin/dashboard");
+        dashboardResponse.EnsureSuccessStatusCode();
+        var dashboard = await ReadJson<DashboardResponse>(dashboardResponse);
+
+        Assert.Equal(2, dashboard.Total);
+        Assert.Equal(2, dashboard.Today);
+        Assert.Equal(2, dashboard.Last7Days);
+        Assert.Equal(2, dashboard.Last30Days);
+        Assert.Equal(2, dashboard.Verified);
+        Assert.Equal(0, dashboard.Unverified);
+        Assert.Equal(0, dashboard.Unassigned);
+        Assert.Contains(dashboard.ByProvince, x => x.Label == "34" && x.Count == 2);
+    }
+
+    [Fact]
     public async Task ApplicationEndpoint_ReturnsSameApplicationForSameIdempotencyKey()
     {
         const string phone = "05321112252";

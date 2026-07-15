@@ -135,10 +135,12 @@ publicApi.MapGet("/legal-texts/active", async (AppDbContext db) =>
 
 publicApi.MapPost("/otp/request", async Task<Results<Ok<OtpRequestResponse>, BadRequest<ApiError>>> (
     OtpRequestDto request,
+    HttpContext httpContext,
     IOtpService otpService,
     CancellationToken cancellationToken) =>
 {
-    var result = await otpService.RequestAsync(request, cancellationToken);
+    var context = new OtpRequestContext(httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString());
+    var result = await otpService.RequestAsync(request, context, cancellationToken);
     return result.Success
         ? TypedResults.Ok(result.Value!)
         : TypedResults.BadRequest(new ApiError(result.ErrorCode, result.Message));
@@ -146,10 +148,12 @@ publicApi.MapPost("/otp/request", async Task<Results<Ok<OtpRequestResponse>, Bad
 
 publicApi.MapPost("/otp/verify", async Task<Results<Ok<OtpVerifyResponse>, BadRequest<ApiError>>> (
     OtpVerifyDto request,
+    HttpContext httpContext,
     IOtpService otpService,
     CancellationToken cancellationToken) =>
 {
-    var result = await otpService.VerifyAsync(request, cancellationToken);
+    var context = new OtpRequestContext(httpContext.GetClientIp(), httpContext.Request.Headers.UserAgent.ToString());
+    var result = await otpService.VerifyAsync(request, context, cancellationToken);
     return result.Success
         ? TypedResults.Ok(result.Value!)
         : TypedResults.BadRequest(new ApiError(result.ErrorCode, result.Message));

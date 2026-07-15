@@ -8,6 +8,7 @@ public sealed record OtpRequestDto(string Phone, string CaptchaToken, string? De
 public sealed record OtpRequestResponse(Guid RequestId, DateTimeOffset ExpiresAt, DateTimeOffset ResendAvailableAt, string? DevelopmentCode);
 public sealed record OtpVerifyDto(string Phone, string Code, string? DeviceId);
 public sealed record OtpVerifyResponse(string VerificationToken, DateTimeOffset ExpiresAt);
+public sealed record OtpRequestContext(string IpAddress, string UserAgent);
 
 public sealed record CreateApplicationRequest(
     string FirstName,

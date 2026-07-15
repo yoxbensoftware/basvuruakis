@@ -8,7 +8,8 @@
 - Başarısız login, CAPTCHA hatası, detay görüntüleme, export ve atama için log altyapısı.
 - AES-256-GCM alan şifreleme.
 - Ayrı HMAC-SHA-256 lookup hash.
-- OTP hash saklama, 3 dakika süre, 5 deneme ve 60 saniye resend cooldown.
+- OTP hash saklama, 3 dakika süre, 5 deneme, 60 saniye resend cooldown, IP ve cihaz bazlı saatlik rate limit.
+- Başarısız CAPTCHA/OTP doğrulamaları ve OTP rate-limit olayları security log’a yazılır.
 - CAPTCHA production’da Turnstile secret gerektirir.
 - Development fake provider production ortamında bypass sağlamaz.
 - CSV/XLSX formula injection sanitization.

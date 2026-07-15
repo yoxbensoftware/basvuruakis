@@ -74,7 +74,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<OtpRequest>(entity =>
         {
             entity.HasIndex(x => new { x.PhoneHash, x.CreatedAt });
+            entity.HasIndex(x => new { x.IpAddress, x.CreatedAt });
+            entity.HasIndex(x => new { x.DeviceId, x.CreatedAt });
             entity.HasIndex(x => x.VerificationTokenHash);
+            entity.Property(x => x.IpAddress).HasMaxLength(64);
+            entity.Property(x => x.DeviceId).HasMaxLength(128);
         });
 
         modelBuilder.Entity<ApplicationRecord>(entity =>

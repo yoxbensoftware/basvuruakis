@@ -3,8 +3,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BasvuruAkis.Api;
+using BasvuruAkis.Api.Data;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BasvuruAkis.Api.Tests;
 
@@ -31,7 +34,9 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
                         ["Database:Provider"] = "Sqlite",
                         ["ConnectionStrings:Sqlite"] = $"Data Source={_dbPath}",
                         ["Security:EncryptionKey"] = "test-encryption-key",
-                        ["Security:LookupKey"] = "test-lookup-key"
+                        ["Security:LookupKey"] = "test-lookup-key",
+                        ["Otp:MaxRequestsPerIpPerHour"] = "100",
+                        ["Otp:MaxRequestsPerDevicePerHour"] = "2"
                     });
                 });
             });
@@ -107,6 +112,28 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var detail = await ReadJson<ApplicationDetailResponse>(detailResponse);
         Assert.Equal("10000000146", detail.NationalId);
         Assert.Equal("+905321112233".Replace("+", "", StringComparison.Ordinal), detail.Phone);
+    }
+
+    [Fact]
+    public async Task OtpRequest_RateLimitsByDevice_AndWritesSecurityLog()
+    {
+        _client.DefaultRequestHeaders.Remove("CF-Connecting-IP");
+        _client.DefaultRequestHeaders.Add("CF-Connecting-IP", "203.0.113.10");
+
+        var first = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto("05321112240", "ok", "same-device"));
+        var second = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto("05321112241", "ok", "same-device"));
+        var third = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto("05321112242", "ok", "same-device"));
+
+        first.EnsureSuccessStatusCode();
+        second.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.BadRequest, third.StatusCode);
+        var error = await ReadJson<ApiError>(third);
+        Assert.Equal("otp_device_rate_limited", error.Code);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var securityLogs = await db.SecurityLogs.AsNoTracking().ToListAsync();
+        Assert.Contains(securityLogs, x => x.EventType == "otp.rate_limit.device" && x.IpAddress == "203.0.113.10");
     }
 
     [Fact]

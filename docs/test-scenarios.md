@@ -23,24 +23,25 @@ Bu senaryolar, PDF gereksinimleri ile geliştirilecek testlerin izlenebilirlik k
 
 1. Health/readiness/liveness endpointleri doğru durum döner.
 2. CAPTCHA doğrulanmadan OTP request reddedilir.
-3. Fake SMS provider yalnızca development/test ortamında çalışır.
-4. Doğrulanmamış telefonla başvuru oluşturulamaz.
-5. KVKK ve açık rıza onayı olmadan başvuru oluşturulamaz.
-6. Aynı TCKN veya telefonla ikinci başvuru genel hata mesajıyla reddedilir.
-7. Idempotency key aynı payload için aynı sonucu döner.
-8. Başvuru oluşturulurken hassas alanlar veritabanında şifreli ve hashli saklanır.
-9. Başvuru oluşturma ile otomatik atama aynı transaction sınırında tamamlanır.
-10. Admin login başarısız denemelerde security log üretir ve limit aşımında geçici kilit uygular.
-11. Refresh token rotation eski tokenı geçersiz kılar.
-12. Başvuru liste endpointi filtre, sorting ve pagination uygular.
-13. Liste endpointi hassas alanları maskeli döner.
-14. Detay endpointi ayrı permission olmadan erişilemez.
-15. Detay görüntüleme audit log üretir.
-16. Manuel temsilcilik değişikliği assignment history ve audit log üretir.
-17. Export endpointi permission olmadan erişilemez.
-18. Export log yönetici, filtre, format, kayıt sayısı ve durum bilgisini saklar.
-19. LegalText aynı türde tek aktif sürüm kuralını korur.
-20. Data subject anonimleştirme endpointi yeniden kimlik doğrulama/onay olmadan çalışmaz.
+3. OTP request telefon cooldown, IP rate limit ve cihaz rate limit kurallarını uygular.
+4. Fake SMS provider yalnızca development/test ortamında çalışır.
+5. Doğrulanmamış telefonla başvuru oluşturulamaz.
+6. KVKK ve açık rıza onayı olmadan başvuru oluşturulamaz.
+7. Aynı TCKN veya telefonla ikinci başvuru genel hata mesajıyla reddedilir.
+8. Idempotency key aynı payload için aynı sonucu döner.
+9. Başvuru oluşturulurken hassas alanlar veritabanında şifreli ve hashli saklanır.
+10. Başvuru oluşturma ile otomatik atama aynı transaction sınırında tamamlanır.
+11. Admin login başarısız denemelerde security log üretir ve limit aşımında geçici kilit uygular.
+12. Refresh token rotation eski tokenı geçersiz kılar.
+13. Başvuru liste endpointi filtre, sorting ve pagination uygular.
+14. Liste endpointi hassas alanları maskeli döner.
+15. Detay endpointi ayrı permission olmadan erişilemez.
+16. Detay görüntüleme audit log üretir.
+17. Manuel temsilcilik değişikliği assignment history ve audit log üretir.
+18. Export endpointi permission olmadan erişilemez.
+19. Export log yönetici, filtre, format, kayıt sayısı ve durum bilgisini saklar.
+20. LegalText aynı türde tek aktif sürüm kuralını korur.
+21. Data subject anonimleştirme endpointi yeniden kimlik doğrulama/onay olmadan çalışmaz.
 
 ## E2E / Smoke Senaryoları
 

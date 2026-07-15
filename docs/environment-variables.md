@@ -14,6 +14,8 @@
 | `Sms__Provider` | Production | SMS provider adapter adı. |
 | `Sms__ApiKey` | Production | SMS provider credential. |
 | `Cors__AllowedOrigins__0` | Production/Staging | Web origin allowlist değeri. |
+| `Otp__MaxRequestsPerIpPerHour` | Tüm ortamlar | Aynı IP için saatlik OTP request üst limiti. Varsayılan `20`. |
+| `Otp__MaxRequestsPerDevicePerHour` | Tüm ortamlar | Aynı cihaz kimliği için saatlik OTP request üst limiti. Varsayılan `10`. |
 
 Development ortamında eksik secret’lar development-only fallback ile çalışır. Production ortamında eksik kritik secret uygulama başlangıcını durdurur.
 

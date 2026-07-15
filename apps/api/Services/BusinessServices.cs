@@ -80,13 +80,14 @@ public sealed class SmsProvider(IConfiguration configuration, IWebHostEnvironmen
 
 public interface IOtpService
 {
-    Task<ServiceResult<OtpRequestResponse>> RequestAsync(OtpRequestDto request, CancellationToken cancellationToken);
-    Task<ServiceResult<OtpVerifyResponse>> VerifyAsync(OtpVerifyDto request, CancellationToken cancellationToken);
+    Task<ServiceResult<OtpRequestResponse>> RequestAsync(OtpRequestDto request, OtpRequestContext context, CancellationToken cancellationToken);
+    Task<ServiceResult<OtpVerifyResponse>> VerifyAsync(OtpVerifyDto request, OtpRequestContext context, CancellationToken cancellationToken);
     Task<bool> ConsumeVerificationTokenAsync(string normalizedPhone, string verificationToken, CancellationToken cancellationToken);
 }
 
 public sealed class OtpService(
     AppDbContext db,
+    IConfiguration configuration,
     ICaptchaVerifier captchaVerifier,
     ISmsProvider smsProvider,
     ICryptoService crypto,
@@ -94,11 +95,15 @@ public sealed class OtpService(
     IWebHostEnvironment environment,
     ISecurityLogService securityLog) : IOtpService
 {
-    public async Task<ServiceResult<OtpRequestResponse>> RequestAsync(OtpRequestDto request, CancellationToken cancellationToken)
+    public async Task<ServiceResult<OtpRequestResponse>> RequestAsync(OtpRequestDto request, OtpRequestContext context, CancellationToken cancellationToken)
     {
+        var ipAddress = NormalizeContextValue(context.IpAddress, 64, "unknown");
+        var userAgent = NormalizeContextValue(context.UserAgent, 256, "");
+        var deviceId = NormalizeContextValue(request.DeviceId, 128, "unknown");
+
         if (!await captchaVerifier.VerifyAsync(request.CaptchaToken, cancellationToken))
         {
-            await securityLog.WriteAsync("captcha.failed", null, "unknown", "", new { purpose = "otp" }, cancellationToken);
+            await securityLog.WriteAsync("captcha.failed", null, ipAddress, userAgent, new { purpose = "otp", deviceId }, cancellationToken);
             return ServiceResult<OtpRequestResponse>.Fail("captcha_failed", "CAPTCHA doğrulaması başarısız.");
         }
 
@@ -117,7 +122,28 @@ public sealed class OtpService(
 
         if (last is not null && last.ResendAvailableAt > now)
         {
+            await securityLog.WriteAsync("otp.cooldown", null, ipAddress, userAgent, new { deviceId }, cancellationToken);
             return ServiceResult<OtpRequestResponse>.Fail("otp_cooldown", "Yeni kod istemek için bekleme süresi dolmalı.");
+        }
+
+        var since = now.AddHours(-1);
+        var maxRequestsPerIpPerHour = Math.Max(1, configuration.GetValue("Otp:MaxRequestsPerIpPerHour", 20));
+        var maxRequestsPerDevicePerHour = Math.Max(1, configuration.GetValue("Otp:MaxRequestsPerDevicePerHour", 10));
+        var ipRequestCount = await db.OtpRequests.CountAsync(x => x.IpAddress == ipAddress && x.CreatedAt >= since, cancellationToken);
+        if (ipRequestCount >= maxRequestsPerIpPerHour)
+        {
+            await securityLog.WriteAsync("otp.rate_limit.ip", null, ipAddress, userAgent, new { count = ipRequestCount, limit = maxRequestsPerIpPerHour }, cancellationToken);
+            return ServiceResult<OtpRequestResponse>.Fail("otp_ip_rate_limited", "Çok fazla doğrulama kodu istendi. Lütfen daha sonra tekrar deneyin.");
+        }
+
+        if (deviceId != "unknown")
+        {
+            var deviceRequestCount = await db.OtpRequests.CountAsync(x => x.DeviceId == deviceId && x.CreatedAt >= since, cancellationToken);
+            if (deviceRequestCount >= maxRequestsPerDevicePerHour)
+            {
+                await securityLog.WriteAsync("otp.rate_limit.device", null, ipAddress, userAgent, new { deviceId, count = deviceRequestCount, limit = maxRequestsPerDevicePerHour }, cancellationToken);
+                return ServiceResult<OtpRequestResponse>.Fail("otp_device_rate_limited", "Çok fazla doğrulama kodu istendi. Lütfen daha sonra tekrar deneyin.");
+            }
         }
 
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
@@ -130,8 +156,8 @@ public sealed class OtpService(
             CreatedAt = now,
             ExpiresAt = now.AddMinutes(3),
             ResendAvailableAt = now.AddSeconds(60),
-            DeviceId = string.IsNullOrWhiteSpace(request.DeviceId) ? "unknown" : request.DeviceId,
-            IpAddress = "unknown"
+            DeviceId = deviceId,
+            IpAddress = ipAddress
         };
         db.OtpRequests.Add(otp);
         await db.SaveChangesAsync(cancellationToken);
@@ -144,10 +170,13 @@ public sealed class OtpService(
             environment.IsProduction() ? null : code));
     }
 
-    public async Task<ServiceResult<OtpVerifyResponse>> VerifyAsync(OtpVerifyDto request, CancellationToken cancellationToken)
+    public async Task<ServiceResult<OtpVerifyResponse>> VerifyAsync(OtpVerifyDto request, OtpRequestContext context, CancellationToken cancellationToken)
     {
         var phone = Normalization.NormalizePhone(request.Phone);
         var now = clock.UtcNow;
+        var ipAddress = NormalizeContextValue(context.IpAddress, 64, "unknown");
+        var userAgent = NormalizeContextValue(context.UserAgent, 256, "");
+        var deviceId = NormalizeContextValue(request.DeviceId, 128, "unknown");
         var phoneHash = crypto.HashLookup(phone);
         var otp = await db.OtpRequests
             .Where(x => x.PhoneHash == phoneHash && x.VerifiedAt == null && x.VerificationTokenUsedAt == null)
@@ -156,10 +185,12 @@ public sealed class OtpService(
 
         if (otp is null || otp.ExpiresAt < now)
         {
+            await securityLog.WriteAsync("otp.verify.failed", null, ipAddress, userAgent, new { deviceId, reason = "expired_or_missing" }, cancellationToken);
             return ServiceResult<OtpVerifyResponse>.Fail("otp_expired", "OTP süresi doldu veya kod bulunamadı.");
         }
         if (otp.Attempts >= 5)
         {
+            await securityLog.WriteAsync("otp.verify.limit", null, ipAddress, userAgent, new { deviceId, otpRequestId = otp.Id }, cancellationToken);
             return ServiceResult<OtpVerifyResponse>.Fail("otp_attempt_limit", "OTP deneme limiti aşıldı.");
         }
 
@@ -167,7 +198,7 @@ public sealed class OtpService(
         var expectedHash = crypto.HashLookup($"{phone}:{request.Code}");
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expectedHash), Encoding.UTF8.GetBytes(otp.CodeHash)))
         {
-            await db.SaveChangesAsync(cancellationToken);
+            await securityLog.WriteAsync("otp.verify.failed", null, ipAddress, userAgent, new { deviceId, otpRequestId = otp.Id, reason = "invalid_code" }, cancellationToken);
             return ServiceResult<OtpVerifyResponse>.Fail("otp_invalid", "OTP kodu geçerli değil.");
         }
 
@@ -178,6 +209,17 @@ public sealed class OtpService(
         await db.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<OtpVerifyResponse>.Ok(new OtpVerifyResponse(token, otp.VerificationTokenExpiresAt.Value));
+    }
+
+    private static string NormalizeContextValue(string? value, int maxLength, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        value = value.Trim();
+        return value.Length <= maxLength ? value : value[..maxLength];
     }
 
     public async Task<bool> ConsumeVerificationTokenAsync(string normalizedPhone, string verificationToken, CancellationToken cancellationToken)

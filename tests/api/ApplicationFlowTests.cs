@@ -126,6 +126,66 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdminAuth_RefreshRotatesTokenAndRejectsOldToken()
+    {
+        var loginResponse = await _client.PostAsJsonAsync("/api/admin/auth/login", new AdminLoginRequest("admin@basvuruakis.local", "ChangeMe!12345", null));
+        loginResponse.EnsureSuccessStatusCode();
+        var login = await ReadJson<LoginResponse>(loginResponse);
+
+        var refreshResponse = await _client.PostAsJsonAsync("/api/admin/auth/refresh", new RefreshTokenRequest(login.RefreshToken));
+        refreshResponse.EnsureSuccessStatusCode();
+        var refreshed = await ReadJson<LoginResponse>(refreshResponse);
+        Assert.NotEqual(login.RefreshToken, refreshed.RefreshToken);
+
+        var reuseOldToken = await _client.PostAsJsonAsync("/api/admin/auth/refresh", new RefreshTokenRequest(login.RefreshToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, reuseOldToken.StatusCode);
+
+        var refreshNewToken = await _client.PostAsJsonAsync("/api/admin/auth/refresh", new RefreshTokenRequest(refreshed.RefreshToken));
+        refreshNewToken.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task ApplicationEndpoint_ReturnsSameApplicationForSameIdempotencyKey()
+    {
+        const string phone = "05321112252";
+        var otpRequest = await _client.PostAsJsonAsync("/api/otp/request", new OtpRequestDto(phone, "ok", "test-device"));
+        otpRequest.EnsureSuccessStatusCode();
+        var otp = await ReadJson<OtpRequestResponse>(otpRequest);
+
+        var otpVerify = await _client.PostAsJsonAsync("/api/otp/verify", new OtpVerifyDto(phone, otp.DevelopmentCode!, "test-device"));
+        otpVerify.EnsureSuccessStatusCode();
+        var verification = await ReadJson<OtpVerifyResponse>(otpVerify);
+        var idempotencyKey = $"idem-{Guid.NewGuid():N}";
+        var request = new CreateApplicationRequest(
+            "Ayşe",
+            "Yılmaz",
+            "10000000146",
+            phone,
+            "idempotent@example.test",
+            34,
+            3401,
+            340101,
+            "Caferağa Mahallesi Test Sokak No:1",
+            null,
+            true,
+            true,
+            verification.VerificationToken,
+            idempotencyKey);
+
+        var firstResponse = await _client.PostAsJsonAsync("/api/applications", request);
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var first = await ReadJson<ApplicationCreatedResponse>(firstResponse);
+
+        var secondResponse = await _client.PostAsJsonAsync("/api/applications", request);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        var second = await ReadJson<ApplicationCreatedResponse>(secondResponse);
+
+        Assert.Equal(first.Id, second.Id);
+        Assert.Equal(first.ReferenceNumber, second.ReferenceNumber);
+        Assert.Equal(first.Status, second.Status);
+    }
+
+    [Fact]
     public async Task OtpRequest_RateLimitsByDevice_AndWritesSecurityLog()
     {
         _client.DefaultRequestHeaders.Remove("CF-Connecting-IP");

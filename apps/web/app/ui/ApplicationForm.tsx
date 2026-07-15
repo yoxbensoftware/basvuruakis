@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "./api";
 
 type OtpRequestResponse = {
@@ -19,6 +19,15 @@ type ApplicationCreatedResponse = {
   id: string;
   referenceNumber: string;
   status: string;
+};
+
+type LegalTextResponse = {
+  id: string;
+  type: "PrivacyNotice" | "ExplicitConsent" | "CookiePolicy" | string;
+  version: string;
+  title: string;
+  body: string;
+  publishedAt: string;
 };
 
 const initialForm = {
@@ -41,9 +50,31 @@ export function ApplicationForm() {
   const [otpCode, setOtpCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [legalTexts, setLegalTexts] = useState<LegalTextResponse[]>([]);
+  const [legalTextError, setLegalTextError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<LegalTextResponse[]>("/api/legal-texts/active")
+      .then((texts) => {
+        if (!cancelled) {
+          setLegalTexts(texts);
+          setLegalTextError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLegalTextError("KVKK metinleri yüklenemedi. Lütfen sayfayı yenileyin.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function requestOtp() {
     setError(null);
@@ -122,6 +153,7 @@ export function ApplicationForm() {
   return (
     <form className="form-card" onSubmit={submitApplication}>
       {error && <div className="status error" role="alert">{error}</div>}
+      {legalTextError && <div className="status error" role="alert">{legalTextError}</div>}
       {status && <div className="status success" role="status">{status}</div>}
       {devCode && <div className="status">Demo OTP kodu: <strong>{devCode}</strong></div>}
 
@@ -149,6 +181,18 @@ export function ApplicationForm() {
         <div className="field full">
           <label htmlFor="address">Açık adres</label>
           <textarea id="address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} rows={4} required />
+        </div>
+        <div className="field full legal-texts">
+          <label>KVKK ve Onay Metinleri</label>
+          {legalTexts.length === 0 && !legalTextError && <p className="muted">Metinler yükleniyor...</p>}
+          {legalTexts
+            .filter((text) => text.type === "PrivacyNotice" || text.type === "ExplicitConsent")
+            .map((text) => (
+              <details key={text.id}>
+                <summary>{text.title} - v{text.version}</summary>
+                <p>{text.body}</p>
+              </details>
+            ))}
         </div>
         <label className="field full">
           <span>

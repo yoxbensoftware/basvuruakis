@@ -117,6 +117,10 @@ button {
   max-width: 68ch;
 }
 
+.muted {
+  color: var(--muted);
+}
+
 .card,
 .form-card {
   background: var(--surface);
@@ -199,6 +203,32 @@ textarea {
   padding: .8rem .9rem;
   background: white;
   color: var(--text);
+}
+
+.legal-texts {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-soft);
+  padding: 1rem;
+}
+
+.legal-texts details {
+  border-top: 1px solid var(--border);
+  padding: .75rem 0 0;
+}
+
+.legal-texts details:first-of-type {
+  border-top: 0;
+}
+
+.legal-texts summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.legal-texts p {
+  color: var(--muted);
+  margin-bottom: 0;
 }
 
 input:focus,

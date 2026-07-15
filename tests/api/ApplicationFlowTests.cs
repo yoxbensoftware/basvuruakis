@@ -434,7 +434,12 @@ public sealed class ApplicationFlowTests : IAsyncLifetime
         var login = await ReadJson<LoginResponse>(loginResponse);
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
 
-        var anonymizeResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{created.Id}/anonymize", new AnonymizeApplicationRequest("KVKK veri sahibi silme talebi"));
+        var missingConfirmationResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{created.Id}/anonymize", new AnonymizeApplicationRequest("KVKK veri sahibi silme talebi", false));
+        Assert.Equal(HttpStatusCode.BadRequest, missingConfirmationResponse.StatusCode);
+        var missingConfirmation = await ReadJson<ApiError>(missingConfirmationResponse);
+        Assert.Equal("confirmation_required", missingConfirmation.Code);
+
+        var anonymizeResponse = await _client.PostAsJsonAsync($"/api/admin/applications/{created.Id}/anonymize", new AnonymizeApplicationRequest("KVKK veri sahibi silme talebi", true));
         anonymizeResponse.EnsureSuccessStatusCode();
         var anonymized = await ReadJson<ApplicationAnonymizedResponse>(anonymizeResponse);
         Assert.Equal("Anonymized", anonymized.Status);

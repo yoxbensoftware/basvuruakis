@@ -110,6 +110,7 @@ export function AdminPanel() {
   const [assignmentOfficeId, setAssignmentOfficeId] = useState(2);
   const [assignmentReason, setAssignmentReason] = useState("Demo manuel yönlendirme");
   const [anonymizeReason, setAnonymizeReason] = useState("KVKK veri sahibi talebi");
+  const [anonymizeConfirmed, setAnonymizeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -173,6 +174,7 @@ export function AdminPanel() {
     setApplications(null);
     setAuditLogs(null);
     setSecurityLogs(null);
+    setAnonymizeConfirmed(false);
     setStatus(null);
     setError(null);
   }
@@ -186,6 +188,7 @@ export function AdminPanel() {
         headers: authHeaders()
       });
       setDetail(result);
+      setAnonymizeConfirmed(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Başvuru detayı alınamadı.");
     } finally {
@@ -242,9 +245,10 @@ export function AdminPanel() {
       const result = await apiFetch<ApplicationAnonymizedResponse>(`/api/admin/applications/${detail.id}/anonymize`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ reason: anonymizeReason })
+        body: JSON.stringify({ reason: anonymizeReason, confirmed: anonymizeConfirmed })
       });
       setStatus(`Başvuru anonimleştirildi. Durum: ${result.status}`);
+      setAnonymizeConfirmed(false);
       await loadAdminData(token);
       await loadDetail(detail.id);
     } catch (err) {
@@ -514,7 +518,18 @@ export function AdminPanel() {
                   />
                 </div>
                 <div className="field full">
-                  <button type="submit" className="secondary" disabled={loading || detail.status === "Anonymized" || anonymizeReason.trim().length < 5}>
+                  <label className="checkline">
+                    <input
+                      type="checkbox"
+                      checked={anonymizeConfirmed}
+                      onChange={(event) => setAnonymizeConfirmed(event.target.checked)}
+                      disabled={loading || detail.status === "Anonymized"}
+                    />
+                    <span>Geri alınamaz anonimleştirme işlemini onaylıyorum.</span>
+                  </label>
+                </div>
+                <div className="field full">
+                  <button type="submit" className="secondary" disabled={loading || detail.status === "Anonymized" || anonymizeReason.trim().length < 5 || !anonymizeConfirmed}>
                     KVKK anonimleştir
                   </button>
                 </div>

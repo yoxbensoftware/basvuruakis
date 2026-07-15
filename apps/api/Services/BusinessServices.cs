@@ -441,13 +441,18 @@ public sealed class AssignmentService(AppDbContext db, ISystemClock clock, IAudi
 
 public interface IAnonymizationService
 {
-    Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, CancellationToken cancellationToken);
+    Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, bool confirmed, CancellationToken cancellationToken);
 }
 
 public sealed class AnonymizationService(AppDbContext db, ICryptoService crypto, ISystemClock clock, IAuditService audit) : IAnonymizationService
 {
-    public async Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, CancellationToken cancellationToken)
+    public async Task<ServiceResult<ApplicationAnonymizedResponse>> AnonymizeApplicationAsync(Guid applicationId, Guid actorUserId, string reason, bool confirmed, CancellationToken cancellationToken)
     {
+        if (!confirmed)
+        {
+            return ServiceResult<ApplicationAnonymizedResponse>.Fail("confirmation_required", "Anonimleştirme için açık onay zorunludur.");
+        }
+
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
         {
             return ServiceResult<ApplicationAnonymizedResponse>.Fail("reason_required", "Anonimleştirme gerekçesi zorunludur.");

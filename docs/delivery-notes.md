@@ -20,6 +20,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Başvuru referans numarası üretimi servis arkasına alındı; çakışma durumunda güvenli yeniden deneme ve unique constraint yarışları için kontrollü API yanıtı eklendi.
 - Admin MFA başarısız denemeleri parola hatalarıyla aynı kilit politikasına bağlandı ve security log'a yazıldı.
 - Legal text kayıtlarında aynı tür için yalnızca tek aktif sürüme izin veren filtered unique index eklendi.
+- KVKK anonimleştirme endpoint’i geri alınamaz işlem için açık onay (`confirmed=true`) zorunlu kılacak şekilde sıkılaştırıldı.
 - Production readiness kontrolü başvuru alabilmek için zorunlu operasyon verileri eksikse 503 dönecek şekilde sıkılaştırıldı.
 - Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
 - Web response security header'ları ve API production HSTS eklendi.

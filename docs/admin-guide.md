@@ -28,7 +28,7 @@ Uygulama permission bazlı çalışır:
 2. Detay ekranı ayrı permission gerektirir ve her görüntüleme audit log üretir.
 3. Manuel atama yapılırsa eski otomatik atama korunur, yeni atama history olarak eklenir.
 4. Export işlemi ayrı permission gerektirir ve export log üretir.
-5. Anonimleştirme işlemi gerekçe ister, başvuru durumunu `Anonymized` yapar ve audit log üretir.
+5. Anonimleştirme işlemi gerekçe ve açık onay ister, başvuru durumunu `Anonymized` yapar ve audit log üretir.
 
 Demo admin panelinde bu akışlar dashboard, liste, detay, manuel yönlendirme, KVKK anonimleştirme, son audit/security log tabloları ve CSV export butonlarıyla uçtan uca denenebilir.
 

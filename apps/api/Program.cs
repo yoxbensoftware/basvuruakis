@@ -509,7 +509,7 @@ admin.MapPost("/applications/{id:guid}/anonymize", async Task<Results<Ok<Applica
         return TypedResults.Forbid();
     }
 
-    var result = await anonymizationService.AnonymizeApplicationAsync(id, userId.Value, request.Reason, cancellationToken);
+    var result = await anonymizationService.AnonymizeApplicationAsync(id, userId.Value, request.Reason, request.Confirmed, cancellationToken);
     if (result.Success)
     {
         return TypedResults.Ok(result.Value!);

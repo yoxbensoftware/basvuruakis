@@ -25,7 +25,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Admin login, refresh token rotation, permission kontrollü liste/detay/dashboard/export/audit-security log görüntüleme.
 - Production ilk admin bootstrap'i ve MFA zorunluluğu.
 - Admin MFA hatalarında security log ve 5 denemede geçici hesap kilidi.
-- KVKK veri sahibi talebi için gerekçeli başvuru anonimleştirme.
+- KVKK veri sahibi talebi için gerekçeli ve açık onaylı başvuru anonimleştirme.
 - Audit/security log temeli ve permission kontrollü okuma endpointleri.
 - CSV/XLSX export sanitization.
 - Admin başvuru listesi ve export için ortak filtreleme; TCKN/telefon/e-posta HMAC lookup araması, son temsilcilik, atanma ve telefon doğrulama filtreleri.

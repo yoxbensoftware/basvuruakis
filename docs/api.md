@@ -22,7 +22,7 @@ Tüm admin endpointleri JWT Bearer token kullanır.
 - `GET /api/admin/applications`: permission kontrollü maskeli liste. `status`, `firstName`, `lastName`, `nationalId`, `phone`, `email`, `provinceId`, `districtId`, `neighborhoodId`, `representativeOfficeId`, `isAssigned`, `isPhoneVerified`, `from`, `to`, `page`, `pageSize`, `sort`, `desc` query parametrelerini destekler. TCKN/telefon/e-posta aramaları normalize HMAC lookup hash üzerinden yapılır.
 - `GET /api/admin/applications/{id}`: detay görüntüleme; audit log üretir.
 - `POST /api/admin/applications/{id}/assignment`: manuel temsilcilik ataması.
-- `POST /api/admin/applications/{id}/anonymize`: KVKK veri sahibi talebi kapsamında kişisel alanları anonimleştirir.
+- `POST /api/admin/applications/{id}/anonymize`: KVKK veri sahibi talebi kapsamında kişisel alanları anonimleştirir; gerekçe ve açık `confirmed=true` onayı ister.
 - `GET /api/admin/dashboard`: temel metrikler.
 - `GET /api/admin/audit-logs`: denetim kayıtlarını permission kontrollü listeler.
 - `GET /api/admin/security-logs`: güvenlik olay kayıtlarını permission kontrollü listeler.

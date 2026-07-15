@@ -86,7 +86,7 @@ public sealed record ApplicationDetailResponse(
     DateTimeOffset CreatedAt);
 
 public sealed record ManualAssignmentRequest(int RepresentativeOfficeId, string Reason);
-public sealed record AnonymizeApplicationRequest(string Reason);
+public sealed record AnonymizeApplicationRequest(string Reason, bool Confirmed);
 public sealed record ApplicationAnonymizedResponse(Guid Id, string Status, DateTimeOffset AnonymizedAt);
 
 public sealed record DashboardResponse(

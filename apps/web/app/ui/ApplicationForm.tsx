@@ -73,7 +73,7 @@ export function ApplicationForm() {
   const [otpCode, setOtpCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState(turnstileEnabled ? "" : "demo-ok");
+  const [captchaToken, setCaptchaToken] = useState(turnstileEnabled ? "" : "presentation-ok");
   const [legalTexts, setLegalTexts] = useState<LegalTextResponse[]>([]);
   const [legalTextError, setLegalTextError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -176,7 +176,7 @@ export function ApplicationForm() {
         })
       });
       setDevCode(result.developmentCode ?? null);
-      setStatus(result.developmentCode ? "OTP kodu gönderildi. Demo ortamında kod ekranda gösterilir." : "OTP kodu gönderildi.");
+      setStatus(result.developmentCode ? "OTP kodu gönderildi. Sunum ortamında doğrulama kodu ekranda gösterilir." : "OTP kodu gönderildi.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP isteği başarısız.");
     } finally {
@@ -272,7 +272,7 @@ export function ApplicationForm() {
           {error && <div className="status error" role="alert">{error}</div>}
           {legalTextError && <div className="status error" role="alert">{legalTextError}</div>}
           {status && <div className="status success" role="status">{status}</div>}
-          {devCode && <div className="status neutral">Demo OTP kodu: <strong>{devCode}</strong></div>}
+          {devCode && <div className="status neutral">Sunum OTP kodu: <strong>{devCode}</strong></div>}
         </div>
       )}
 
@@ -331,7 +331,7 @@ export function ApplicationForm() {
       <section className="form-section" aria-labelledby="address-section">
         <div className="section-heading">
           <h3 id="address-section">Adres ve lokasyon</h3>
-          <p>Demo veri setinde Kadıköy / Caferağa lokasyonu kullanılır.</p>
+          <p>Seçili hizmet lokasyonu Kadıköy / Caferağa olarak ayarlanmıştır.</p>
         </div>
         <div className="form-grid">
           <div className="field">

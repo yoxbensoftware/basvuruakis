@@ -109,7 +109,7 @@ export function AdminPanel() {
   const [securityLogs, setSecurityLogs] = useState<PagedSecurityLogs | null>(null);
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [assignmentOfficeId, setAssignmentOfficeId] = useState(2);
-  const [assignmentReason, setAssignmentReason] = useState("Demo manuel yönlendirme");
+  const [assignmentReason, setAssignmentReason] = useState("Operasyonel manuel yönlendirme");
   const [anonymizeReason, setAnonymizeReason] = useState("KVKK veri sahibi talebi");
   const [anonymizeConfirmed, setAnonymizeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -362,9 +362,9 @@ export function AdminPanel() {
               <h2>Başvuru yönetimi</h2>
             </div>
             <div className="toolbar-actions">
-              <span className="badge">{permissions.length} permission</span>
+              <span className="badge">{permissions.length} yetki</span>
               <button type="button" onClick={refreshAdminData} disabled={loading}>Yenile</button>
-              <button type="button" className="secondary" onClick={downloadCsvExport} disabled={loading}>CSV export</button>
+              <button type="button" className="secondary" onClick={downloadCsvExport} disabled={loading}>CSV indir</button>
               <button type="button" className="ghost" onClick={logout}>Çıkış</button>
             </div>
           </div>
@@ -447,7 +447,7 @@ export function AdminPanel() {
               <div className="panel-heading">
                 <div>
                   <h2>Denetim</h2>
-                  <p>Son audit olayları.</p>
+                  <p>Son denetim kayıtları.</p>
                 </div>
               </div>
               <div className="event-list">
@@ -466,7 +466,7 @@ export function AdminPanel() {
               <div className="panel-heading">
                 <div>
                   <h2>Güvenlik</h2>
-                  <p>Son security olayları.</p>
+                  <p>Son güvenlik kayıtları.</p>
                 </div>
               </div>
               <div className="event-list">

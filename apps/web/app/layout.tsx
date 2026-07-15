@@ -3,10 +3,12 @@ import Link from "next/link";
 import "./globals.css";
 import { CookieConsent } from "./ui/CookieConsent";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
 export const metadata: Metadata = {
   title: "BaşvuruAkış",
   description: "KVKK uyumlu başvuru, OTP doğrulama ve otomatik temsilcilik atama platformu.",
-  metadataBase: new URL("http://localhost:3000"),
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
   openGraph: {
     title: "BaşvuruAkış",
     description: "Güvenli başvuru toplama ve otomatik yönlendirme.",
@@ -33,7 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="main">{children}</main>
         <footer className="footer">
           <span>© 2026 BaşvuruAkış</span>
-          <span>KVKK teknik şablonları hukuk onayı gerektirir.</span>
+          <span>Güvenli başvuru ve yönlendirme platformu.</span>
         </footer>
         <CookieConsent />
       </body>

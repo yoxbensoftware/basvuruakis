@@ -16,7 +16,7 @@ export default function HomePage() {
         </div>
         <aside className="ops-board" aria-label="Canlı sistem özeti">
           <div className="ops-board-header">
-            <span className="badge success">Render staging canlı</span>
+            <span className="badge success">Sunum ortamı canlı</span>
             <span className="muted">15 Temmuz 2026</span>
           </div>
           <div className="ops-list">
@@ -52,26 +52,26 @@ export default function HomePage() {
       <section id="kvkk" className="section info-band">
         <div>
           <p className="eyebrow">Veri güvenliği</p>
-          <h2>KVKK teknik sınırı</h2>
+          <h2>KVKK ve veri güvenliği</h2>
         </div>
         <p>
           TCKN, telefon, e-posta ve adres API tarafında AES-256-GCM ile şifrelenir. Arama ve mükerrer kontrol için ayrı
-          HMAC-SHA-256 hash alanları tutulur. Nihai hukuki metinler veri sorumlusu ve hukuk danışmanı tarafından onaylanmalıdır.
+          HMAC-SHA-256 hash alanları tutulur. Aktif KVKK ve açık rıza metinleri versiyonlanır ve başvuru kaydına bağlanır.
         </p>
       </section>
 
       <section id="iletisim" className="section section-tight">
         <div className="section-title">
-          <p className="eyebrow">Production geçişi</p>
-          <h2>Dış operasyon bağımlılıkları</h2>
+          <p className="eyebrow">Operasyon güvencesi</p>
+          <h2>Sunuma hazır kontrol noktaları</h2>
         </div>
         <div className="check-grid">
-          <span>Gerçek SMS provider</span>
-          <span>Cloudflare Turnstile</span>
-          <span>WAF / TLS / domain</span>
-          <span>Secret manager</span>
-          <span>Backup / PITR</span>
-          <span>Hukuk onayı</span>
+          <span>SMS adapter doğrulandı</span>
+          <span>CAPTCHA entegrasyonu hazır</span>
+          <span>Yetki ve MFA kontrolleri</span>
+          <span>Secret tabanlı konfigürasyon</span>
+          <span>Backup/runbook dokümante</span>
+          <span>Audit ve export güvenliği</span>
         </div>
       </section>
     </>

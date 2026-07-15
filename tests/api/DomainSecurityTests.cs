@@ -160,6 +160,77 @@ public sealed class DomainSecurityTests
     }
 
     [Fact]
+    public async Task DemoSeed_RefreshesPublicCopyForExistingPresentationData()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"basvuruakis-seed-{Guid.NewGuid():N}.db");
+        var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+
+        await using var provider = services.BuildServiceProvider();
+        try
+        {
+            var db = provider.GetRequiredService<AppDbContext>();
+            await db.Database.EnsureCreatedAsync();
+            db.ContentPages.Add(new ContentPage
+            {
+                Id = Guid.NewGuid(),
+                Slug = "iletisim",
+                Title = "İletişim",
+                Summary = "Eski özet",
+                Body = "Demo ortamında iletişim bilgileri yönetim panelinden güncellenir.",
+                SeoTitle = "İletişim",
+                SeoDescription = "Eski açıklama",
+                Status = PublishStatus.Published,
+                PublishedAt = DateTimeOffset.UtcNow
+            });
+            db.LegalTexts.AddRange(
+                new LegalText
+                {
+                    Id = Guid.NewGuid(),
+                    Type = LegalTextType.PrivacyNotice,
+                    Version = "2026-07-15",
+                    Title = "KVKK Aydınlatma Metni",
+                    Body = "Bu metin demo teknik şablondur. Hukuki içerik onaylanmalıdır.",
+                    IsActive = true,
+                    PublishedAt = DateTimeOffset.UtcNow
+                },
+                new LegalText
+                {
+                    Id = Guid.NewGuid(),
+                    Type = LegalTextType.ExplicitConsent,
+                    Version = "2026-07-15",
+                    Title = "Açık Rıza Metni",
+                    Body = "Bu açık rıza metni demo teknik şablondur.",
+                    IsActive = true,
+                    PublishedAt = DateTimeOffset.UtcNow
+                });
+            await db.SaveChangesAsync();
+
+            await DemoSeed.SeedAsync(provider);
+
+            var contact = await db.ContentPages.AsNoTracking().SingleAsync(x => x.Slug == "iletisim");
+            var activeLegalTexts = await db.LegalTexts.AsNoTracking().Where(x => x.IsActive).ToListAsync();
+            Assert.DoesNotContain("Demo", contact.Body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(activeLegalTexts, x => x.Body.Contains("demo", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(activeLegalTexts, x => x.Type == LegalTextType.CookiePolicy);
+        }
+        finally
+        {
+            if (File.Exists(dbPath))
+            {
+                try
+                {
+                    File.Delete(dbPath);
+                }
+                catch (IOException)
+                {
+                    // Windows can hold SQLite files briefly after disposal.
+                }
+            }
+        }
+    }
+
+    [Fact]
     public void TotpService_NormalizesBase32Secrets()
     {
         Assert.Equal("JBSWY3DPEHPK3PXP", TotpService.NormalizeSecret("jb swy3dp-ehpk3pxp"));

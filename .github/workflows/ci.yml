@@ -32,8 +32,14 @@ jobs:
       - name: Restore .NET
         run: dotnet restore BasvuruAkis.slnx
 
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
       - name: Test API
         run: dotnet test BasvuruAkis.slnx --no-restore
+
+      - name: Validate EF migrations
+        run: dotnet tool run dotnet-ef migrations script --idempotent --project apps/api/BasvuruAkis.Api.csproj --startup-project apps/api/BasvuruAkis.Api.csproj --context AppDbContext --output /tmp/basvuruakis-migrations.sql
 
       - name: Scan NuGet packages
         run: |

@@ -15,6 +15,8 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - Public başvuru formu Turnstile token akışını destekler; production-like Compose `NEXT_PUBLIC_CAPTCHA_PROVIDER=turnstile` ve site key olmadan build edilmez.
 - Production SMS gönderimi `http-json` adapter ile gerçek HTTPS endpoint çağrısı yapar; log-only/stub provider production’da kabul edilmez.
 - PostgreSQL `InitialCreate` EF migration dosyası üretildi; production DB şeması uygulama startup'ından ayrı migration job ile kurulacak şekilde dokümante edildi.
+- Backup/restore scriptleri SHA-256 checksum, metadata, retention temizliği ve restore için zorunlu `-Force` koruması ile sertleştirildi.
+- Web response security header'ları ve API production HSTS eklendi.
 
 ## Production Manuel Konfigürasyonları
 
@@ -22,7 +24,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - SMS provider hesabı, `http-json` uyumlu endpoint, gönderici adı, maliyet limiti ve credential tanımı.
 - S3 uyumlu object storage bucket, lifecycle policy ve credential tanımı.
 - Secret store veya hosting platform secret manager.
-- TLS sertifikası, HSTS ve Nginx/edge yönlendirme.
+- TLS sertifikası, production domain ve Nginx/edge yönlendirme.
 - PostgreSQL yedekleme hedefi, saklama politikası ve restore testi.
 - Monitoring alarm kanalları.
 - KVKK metinlerinin hukuk onayı ve saklama sürelerinin veri sorumlusu tarafından kesinleştirilmesi.
@@ -46,5 +48,7 @@ Bu dosya geliştirme sırasında tamamlananları, doğrulama sonuçlarını ve p
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
 - `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde başarılı.
+- `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
+- `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 - `render.yaml` resmi Render schema ile doğrulandı.
 - Render demo/staging canlı kontrolü başarılı: API `/health/live` ve `/health/ready` 200, web `/`, `/basvuru`, `/admin` 200.

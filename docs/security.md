@@ -15,12 +15,13 @@
 - Production SMS provider `http-json` HTTPS adapter ile gerçek provider çağrısı yapar; log-only/stub provider kabul edilmez.
 - Development fake provider production ortamında bypass sağlamaz.
 - CSV/XLSX formula injection sanitization.
-- Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, temel CSP.
+- API security headers ve production HSTS.
+- Web security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS ve Turnstile/API allowlist'li CSP.
 - NuGet ve pnpm dependency sürümleri pinlidir.
 
 ## Production Sertleştirme Adımları
 
-- TLS termination ve HSTS edge veya Nginx üzerinde etkinleştirilmeli.
+- TLS termination edge veya Nginx üzerinde etkinleştirilmeli; HSTS web/API response seviyesinde de gönderilir.
 - Cloudflare WAF, Turnstile, rate limit ve origin erişim kısıtları kurulmalı.
 - Admin MFA operasyonel olarak zorunlu tutulmalı; yeni production admin hesapları MFA'sız bırakılmamalı.
 - Secret store kullanılmalı; `.env` dosyası production sunucuda kalıcı operasyon standardı olmamalı.

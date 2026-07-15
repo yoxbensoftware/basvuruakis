@@ -88,4 +88,5 @@ Production uygulamadan önce backup alınmalı, script review edilmeli ve rollba
 - Migration deployment pipeline içinde API deploy'undan ayrı job olarak kontrollü çalıştırılmalıdır.
 - Production SMS için `Sms__Provider=http-json`, HTTPS `Sms__Endpoint`, `Sms__ApiKey`, `Sms__Sender` ve `{code}` içeren `Sms__MessageTemplate` gerekir.
 - Compose dosyası production-like local/staging smoke için uygundur. Yüksek trafik production’da managed PostgreSQL, managed Redis, object storage ve edge WAF tercih edilmelidir.
+- Backup job, `backup-postgres.ps1` çıktısını checksum ve metadata dosyalarıyla birlikte bağımsız S3 uyumlu hedefe taşımalı; restore smoke release öncesi doğrulanmalıdır.
 - Zero/low downtime için API ve web image’ları ayrı taglenmeli, migration ayrı job olarak koşturulmalı, rollback imaj tag’i hazır tutulmalıdır.

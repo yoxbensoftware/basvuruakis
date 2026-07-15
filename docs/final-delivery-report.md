@@ -11,6 +11,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Next.js TypeScript web.
 - PostgreSQL/Redis/MinIO/Nginx Compose dosyaları.
 - PostgreSQL `InitialCreate` EF migration ve local `dotnet-ef` tool manifest.
+- Checksum/metadata üreten backup scripti ve `-Force` korumalı restore scripti.
 - Health/readiness/liveness endpointleri.
 - OTP/CAPTCHA adapter altyapısı, Turnstile web token akışı, telefon/IP/cihaz bazlı OTP abuse kontrolleri.
 - Production HTTP JSON SMS adapter ve provider stub engeli.
@@ -34,8 +35,8 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - SMS provider hesabı, HTTP JSON endpoint'i, sender ve credential.
 - S3 uyumlu production object storage.
 - Secret manager.
-- TLS/HSTS ve production domain.
-- Production PostgreSQL backup/WAL/PITR.
+- TLS sertifikası, production domain ve edge yönlendirme.
+- Production PostgreSQL scheduled backup/WAL/PITR hedefi ve alarm kurulumu.
 - İlk admin bootstrap secret değerlerinin ve MFA secret üretim prosedürünün secret manager üzerinden yönetilmesi.
 - KVKK metinlerinin hukuk onayı.
 - Staging yük testi ve güvenlik scanleri.
@@ -57,6 +58,8 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - `docker build -f .\apps\web\Dockerfile --build-arg NEXT_PUBLIC_API_HOST=basvuruakis-api.onrender.com --build-arg NEXT_PUBLIC_CAPTCHA_PROVIDER=development -t basvuruakis-web:verify .`: başarılı.
 - `dotnet tool restore`: başarılı.
 - `dotnet tool run dotnet-ef database update ... --connection <temporary-postgres>`: temiz PostgreSQL container üzerinde migration apply başarılı.
+- `backup-postgres.ps1` + `restore-postgres.ps1 -Force`: geçici PostgreSQL container üzerinde checksum/metadata ve restore smoke başarılı.
+- `basvuruakis-web:verify` container header smoke: CSP, HSTS, `X-Frame-Options=DENY`, `X-Content-Type-Options=nosniff` başarılı.
 
 Render ek doğrulaması:
 

@@ -83,6 +83,11 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+}
+
 app.UseExceptionHandler();
 app.UseSecurityHeaders();
 app.UseCors("web");

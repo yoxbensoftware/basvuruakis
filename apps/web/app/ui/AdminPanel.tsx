@@ -349,7 +349,7 @@ export function AdminPanel() {
               <input id="admin-password" type={demoCredentialsVisible ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
             </div>
             <div className="field">
-              <label htmlFor="admin-totp">MFA kodu</label>
+              <label htmlFor="admin-totp">MFA kodu (bu aşamada gerekli değil)</label>
               <input
                 id="admin-totp"
                 value={totpCode}

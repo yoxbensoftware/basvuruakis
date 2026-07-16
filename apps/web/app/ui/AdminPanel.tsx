@@ -97,9 +97,13 @@ type SecurityLogItem = {
   createdAt: string;
 };
 
+const demoCredentialsVisible = (process.env.NEXT_PUBLIC_CAPTCHA_PROVIDER ?? "development").trim().toLowerCase() === "development";
+const demoAdminEmail = "admin@basvuruakis.local";
+const demoAdminPassword = "ChangeMe!12345";
+
 export function AdminPanel() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(demoCredentialsVisible ? demoAdminEmail : "");
+  const [password, setPassword] = useState(demoCredentialsVisible ? demoAdminPassword : "");
   const [totpCode, setTotpCode] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -331,13 +335,18 @@ export function AdminPanel() {
             <p className="muted">Liste, detay, manuel atama, KVKK anonimleştirme ve export tek panelde çalışır.</p>
           </div>
           <div className="login-fields">
+            {demoCredentialsVisible && (
+              <div className="status neutral" role="note">
+                Demo giriş: <strong>{demoAdminEmail}</strong> / <strong>{demoAdminPassword}</strong>
+              </div>
+            )}
             <div className="field">
               <label htmlFor="admin-email">E-posta</label>
               <input id="admin-email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
             </div>
             <div className="field">
               <label htmlFor="admin-password">Parola</label>
-              <input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
+              <input id="admin-password" type={demoCredentialsVisible ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
             </div>
             <div className="field">
               <label htmlFor="admin-totp">MFA kodu</label>

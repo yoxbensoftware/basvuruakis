@@ -62,7 +62,9 @@ Development fake provider’lar yalnızca development ortamında aktiftir.
 Production geçişi için uygulanacak komutlu runbook:
 
 - `docs/production-cutover-checklist.md`
+- `docs/releases/render-demo-2026-07-16.md`
 - `infrastructure/production/new-production-secrets.ps1`
 - `infrastructure/production/test-production-env.ps1`
 - `infrastructure/production/invoke-production-migration.ps1`
 - `infrastructure/production/new-operational-seed-sql.ps1`
+- `infrastructure/production/test-demo-release.ps1`

@@ -34,6 +34,7 @@ Mevcut çıktı müşteri sunumu için çalışır MVP seviyesindedir. Productio
 - Operasyon ve güvenlik dokümantasyonu.
 - Render Blueprint ile free plan demo/staging deployment.
 - Production cutover checklist, secret üretim, env doğrulama, migration wrapper ve operasyon seed SQL üretim scriptleri.
+- Render demo release notu ve canlı demo smoke scripti.
 
 ## Manuel Konfigürasyon Gerektirenler
 
@@ -75,6 +76,7 @@ Render ek doğrulaması:
 - `render.yaml` resmi Blueprint yapısına göre root seviyede API, web ve Postgres kaynaklarını tanımlar.
 - `https://render.com/schema/render.yaml.json` ile `render.yaml` schema validation başarılı.
 - `infrastructure/k6/smoke.js` web/API ayrı hostlu Render smoke kontrolünü, OTP doğrulama, başvuru oluşturma, admin liste ve CSV export akışını destekler.
+- `infrastructure/production/test-demo-release.ps1` Render demo için web, API, security header, legal text, mock OTP, başvuru, admin liste ve CSV export akışını doğrular.
 - Render Blueprint deploy tamamlandı.
 - API URL: `https://basvuruakis-api.onrender.com`.
 - Web URL: `https://basvuruakis-web.onrender.com`.

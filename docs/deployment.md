@@ -49,6 +49,7 @@ Canlı demo/staging ortamı:
 - Web: `https://basvuruakis-web.onrender.com`
 - API: `https://basvuruakis-api.onrender.com`
 - API health: `/health/live`, `/health/ready`
+- Demo release notu: `docs/releases/render-demo-2026-07-16.md`
 
 Notlar:
 
@@ -57,6 +58,13 @@ Notlar:
 - Production'a geçerken gerçek SMS/CAPTCHA/object storage ayarları, `AdminBootstrap__Email`, `AdminBootstrap__Password`, Base32 `AdminBootstrap__MfaSecret`, aktif KVKK/açık rıza metinleri, lokasyon referans verisi, aktif default temsilcilik ve kontrollü migration job uygulanmalıdır.
 - Web, API host bilgisini Render'ın `RENDER_EXTERNAL_HOSTNAME` değerinden alır. API CORS origin'i web servisinin `RENDER_EXTERNAL_URL` değerine bağlanır.
 - Render Blueprint staging ortamında `NEXT_PUBLIC_CAPTCHA_PROVIDER=development` kullanır; production web build'de `turnstile` ve `NEXT_PUBLIC_TURNSTILE_SITE_KEY` verilmelidir.
+- Demo/prototype için SMS ve CAPTCHA mock çalışır. Gerçek production için `docs/production-cutover-checklist.md` uygulanmadan müşteri verisi alınmamalıdır.
+
+Demo release smoke:
+
+```powershell
+.\infrastructure\production\test-demo-release.ps1
+```
 
 ## Production Migration
 
